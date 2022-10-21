@@ -51,7 +51,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CSVFileHelper.cs" />
-    <Compile Include="ReadAndSaveFileDbHelper.cs" />
     <Compile Include="ReadAndSaveFileException.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

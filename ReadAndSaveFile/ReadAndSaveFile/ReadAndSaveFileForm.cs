@@ -1,7 +1,9 @@
 ﻿using ReadAndSaveCSVFile;
 using System;
 using System.Data;
+using System.Drawing;
 using System.IO;
+using System.Text;
 using System.Windows.Forms;
 namespace ReadAndSaveFile
 {
@@ -9,7 +11,6 @@ namespace ReadAndSaveFile
     {
         #region member
         private string _filePath = string.Empty;
-        private StreamReader _streamReader = null;
         private string _connStr = string.Empty;
         private CSVFileHelper _cSVFileHelper = new CSVFileHelper();
         #endregion
@@ -38,15 +39,13 @@ namespace ReadAndSaveFile
                 {
                     try
                     {
-                        this._streamReader = new StreamReader(this._filePath);
+
+
                         //Get file content
-                        this._cSVFileHelper.GetFileDataToDataTable(this._streamReader);
+                        this._cSVFileHelper.GetFileDataToDataTable(this._filePath);
                         //Display csv file datatable
-                        this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable.Copy();
-                    }
-                    catch (IOException)
-                    {
-                        throw new ReadAndSaveFileException("The file is occupied by another program");
+                        this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable;
+
                     }
                     catch (ReadAndSaveFileException ex)
                     {
@@ -60,11 +59,11 @@ namespace ReadAndSaveFile
             }
             else
             {
+            }
 
-                if (this._streamReader != null)
-                {
-                    this._streamReader.Close();
-                }
+            if (this._cSVFileHelper.CsvContentDataTable != null)
+            {
+                this.btnSaveFile.Enabled = true;
             }
         }
 
@@ -75,23 +74,18 @@ namespace ReadAndSaveFile
         /// <param name="e">Record additional information for clicking btnSaveFile</param>
         private void btnSaveFile_Click(object sender, EventArgs e)
         {
+
             this._connStr = "Server = 192.168.0.236,1433; Initial Catalog = ITLTest;user Id = EKSDBUser; Password = qwe123!@#;";
             DbBase.DbHelper dbhelper = new DbBase.DbHelper(this._connStr);
             string fileContent = string.Empty;
             int nameMaxLength = 64;
-            int maximumAge = 35;
-            int minimumAge = 10;
-            int maximumSNumber = 202299999;
-            int minimumSNumber = 202200000;
             int emailMaxLength = 64;
-            DateTime minimumDate = new DateTime(2022, 1, 3);
-            DateTime maxminumDate = new DateTime(2022, 12, 25);
             string targetTable = "StudentAdmissionInfo";
             string findDataSql = "EXEC sp_CheckStudentAdmissionInfoSnumberIsExists @Snumber = @Snumber";
             DataTable dublicateDataTable = new DataTable();
             DataTable notDublicateDataTable = new DataTable();
             string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoBySnmber @Name = @Name, @Age = @Age, @Snumber = @Snumber, @Sex = @Sex, @Email = @Email, @AdmissionDate = @AdmissionDate";
-            ReadAndSaveFileDbHelper readAndSaveFileDbHelper = new ReadAndSaveFileDbHelper(this._connStr);
+            StringBuilder stringBuilder = new StringBuilder();
 
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
@@ -99,15 +93,14 @@ namespace ReadAndSaveFile
                 try
                 {
                     //Determines if it matches the structure of the data table in the database
-                    if (this._cSVFileHelper.CheckIsMatch(nameMaxLength, maximumAge, minimumAge, maximumSNumber, minimumSNumber, emailMaxLength, minimumDate, maxminumDate))
+                    if (this._cSVFileHelper.CheckIsMatch(nameMaxLength, emailMaxLength))
                     {
+
                         //Check if the file contains duplicate content
                         if (this._cSVFileHelper.CheckCSVDataIsRepeated())
                         {
                             //Get duplicate and non-duplicate data
                             this._cSVFileHelper.GetReapeatedAndNotRepeatedData(findDataSql, this._connStr);
-                            notDublicateDataTable = this._cSVFileHelper.NotDuplicateDataTable.Copy();
-                            dublicateDataTable = this._cSVFileHelper.DuplicateDataTable.Copy();
 
                             if (dublicateDataTable.Rows.Count > 0)
                             {
@@ -116,12 +109,11 @@ namespace ReadAndSaveFile
                                 if (dialogResult.Equals(DialogResult.Yes))
                                 {
                                     //Insert non-duplicate data and update duplicate data
-                                    if (readAndSaveFileDbHelper.SaveAndUpdateBulkData(updateDataSql, dublicateDataTable, notDublicateDataTable, targetTable))
+                                    if (this._cSVFileHelper.SaveAndUpdateData(updateDataSql, updateDataSql, this._cSVFileHelper.DuplicateDataTable, this._cSVFileHelper.NotDuplicateDataTable, targetTable))
                                     {
                                         this._filePath = string.Empty;
                                         this._cSVFileHelper.DestroyCSVContentDataTable();
                                         this.dgvDataTable.DataSource = null;
-                                        this._streamReader.Close();
                                         MessageBox.Show("Success");
                                     }
                                     else
@@ -139,7 +131,6 @@ namespace ReadAndSaveFile
                                         this._filePath = string.Empty;
                                         this._cSVFileHelper.DestroyCSVContentDataTable();
                                         this.dgvDataTable.DataSource = null;
-                                        this._streamReader.Close();
                                         MessageBox.Show("Success");
                                     }
                                     else
@@ -156,7 +147,6 @@ namespace ReadAndSaveFile
                                     this._filePath = string.Empty;
                                     this._cSVFileHelper.DestroyCSVContentDataTable();
                                     this.dgvDataTable.DataSource = null;
-                                    this._streamReader.Close();
                                     MessageBox.Show("Success");
                                 }
                                 else
@@ -170,6 +160,20 @@ namespace ReadAndSaveFile
                             MessageBox.Show("");
                         }
                     }
+                    else
+                    {
+                        //Change the background color of cells whose content does not conform to the rules
+                        for (int i = 0; i < this._cSVFileHelper.ErrorRow.Count; i++)
+                        {
+                            this.dgvDataTable.Rows[this._cSVFileHelper.ErrorRow[i]].Cells[this._cSVFileHelper.ErrorColumn[i]].Style.BackColor = Color.Red;
+                            stringBuilder.Append(this._cSVFileHelper.ErrorMessage[i].ToString() + "\r\n");
+                        }
+
+                        //Output the specific cell information of the specific row that does not conform to the rule
+                        this.txtErrorLog.Text = stringBuilder.ToString();
+
+                        MessageBox.Show("The file content does not conform to the rules.  See the error log output window for details");
+                    }
                 }
                 //Catch custom exceptions
                 catch (ReadAndSaveFileException ex)
@@ -181,6 +185,12 @@ namespace ReadAndSaveFile
             {
                 MessageBox.Show("Please select the file you want to open!");
             }
+        }
+
+        private void ReadAndSaveFileForm_Load(object sender, EventArgs e)
+        {
+            //Disable the savefile button when the form is loaded
+            this.btnSaveFile.Enabled = false;
         }
     }
 }
