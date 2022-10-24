@@ -30,8 +30,9 @@
         {
             this.btnReadFile = new System.Windows.Forms.Button();
             this.dgvDataTable = new System.Windows.Forms.DataGridView();
-            this.btnSaveFile = new System.Windows.Forms.Button();
             this.txtErrorLog = new System.Windows.Forms.TextBox();
+            this.btnSaveFile = new System.Windows.Forms.Button();
+            this.btnRefresh = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgvDataTable)).BeginInit();
             this.SuspendLayout();
             // 
@@ -39,7 +40,7 @@
             // 
             this.btnReadFile.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnReadFile.AutoEllipsis = true;
-            this.btnReadFile.Location = new System.Drawing.Point(299, 415);
+            this.btnReadFile.Location = new System.Drawing.Point(281, 416);
             this.btnReadFile.Name = "btnReadFile";
             this.btnReadFile.Size = new System.Drawing.Size(75, 23);
             this.btnReadFile.TabIndex = 2;
@@ -63,17 +64,6 @@
             this.dgvDataTable.Size = new System.Drawing.Size(799, 333);
             this.dgvDataTable.TabIndex = 0;
             // 
-            // btnSaveFile
-            // 
-            this.btnSaveFile.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnSaveFile.Location = new System.Drawing.Point(380, 416);
-            this.btnSaveFile.Name = "btnSaveFile";
-            this.btnSaveFile.Size = new System.Drawing.Size(75, 23);
-            this.btnSaveFile.TabIndex = 3;
-            this.btnSaveFile.Text = "Save file";
-            this.btnSaveFile.UseVisualStyleBackColor = true;
-            this.btnSaveFile.Click += new System.EventHandler(this.btnSaveFile_Click);
-            // 
             // txtErrorLog
             // 
             this.txtErrorLog.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
@@ -87,17 +77,40 @@
             this.txtErrorLog.TabIndex = 4;
             this.txtErrorLog.WordWrap = false;
             // 
+            // btnSaveFile
+            // 
+            this.btnSaveFile.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
+            this.btnSaveFile.Location = new System.Drawing.Point(443, 415);
+            this.btnSaveFile.Name = "btnSaveFile";
+            this.btnSaveFile.Size = new System.Drawing.Size(75, 23);
+            this.btnSaveFile.TabIndex = 3;
+            this.btnSaveFile.Text = "Save file";
+            this.btnSaveFile.UseVisualStyleBackColor = true;
+            this.btnSaveFile.Click += new System.EventHandler(this.btnSaveFile_Click);
+            // 
+            // btnRefresh
+            // 
+            this.btnRefresh.Location = new System.Drawing.Point(362, 415);
+            this.btnRefresh.Name = "btnRefresh";
+            this.btnRefresh.Size = new System.Drawing.Size(75, 23);
+            this.btnRefresh.TabIndex = 5;
+            this.btnRefresh.Text = "Refresh";
+            this.btnRefresh.UseVisualStyleBackColor = true;
+            this.btnRefresh.Click += new System.EventHandler(this.btnRefresh_Click);
+            // 
             // ReadAndSaveFileForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.btnRefresh);
             this.Controls.Add(this.txtErrorLog);
             this.Controls.Add(this.btnSaveFile);
             this.Controls.Add(this.btnReadFile);
             this.Controls.Add(this.dgvDataTable);
             this.Name = "ReadAndSaveFileForm";
             this.Text = "ReadAndSaveFileForm";
+            this.Load += new System.EventHandler(this.ReadAndSaveFileForm_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dgvDataTable)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -107,7 +120,8 @@
         #endregion
         private System.Windows.Forms.Button btnReadFile;
         private System.Windows.Forms.DataGridView dgvDataTable;
-        private System.Windows.Forms.Button btnSaveFile;
         private System.Windows.Forms.TextBox txtErrorLog;
+        private System.Windows.Forms.Button btnSaveFile;
+        private System.Windows.Forms.Button btnRefresh;
     }
 }

@@ -64,6 +64,7 @@ namespace ReadAndSaveFile
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
                 this.btnSaveFile.Enabled = true;
+                this.btnRefresh.Enabled = true;
             }
         }
 
@@ -74,18 +75,17 @@ namespace ReadAndSaveFile
         /// <param name="e">Record additional information for clicking btnSaveFile</param>
         private void btnSaveFile_Click(object sender, EventArgs e)
         {
-
             this._connStr = "Server = 192.168.0.236,1433; Initial Catalog = ITLTest;user Id = EKSDBUser; Password = qwe123!@#;";
             DbBase.DbHelper dbhelper = new DbBase.DbHelper(this._connStr);
             string fileContent = string.Empty;
             int nameMaxLength = 64;
             int emailMaxLength = 64;
             string targetTable = "StudentAdmissionInfo";
-            string findDataSql = "EXEC sp_CheckStudentAdmissionInfoSnumberIsExists @Snumber = @Snumber";
+            string findDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
             DataTable dublicateDataTable = new DataTable();
             DataTable notDublicateDataTable = new DataTable();
-            string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoBySnmber @Name = @Name, @Age = @Age, @Snumber = @Snumber, @Sex = @Sex, @Email = @Email, @AdmissionDate = @AdmissionDate";
-            StringBuilder stringBuilder = new StringBuilder();
+            string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoBySnmber @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
+
 
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
@@ -97,10 +97,10 @@ namespace ReadAndSaveFile
                     {
 
                         //Check if the file contains duplicate content
-                        if (this._cSVFileHelper.CheckCSVDataIsRepeated())
+                        if (this._cSVFileHelper.CheckCSVDataIsDuplicated())
                         {
                             //Get duplicate and non-duplicate data
-                            this._cSVFileHelper.GetReapeatedAndNotRepeatedData(findDataSql, this._connStr);
+                            this._cSVFileHelper.GetDuplicatedAndDuplicateedData(findDataSql, this._connStr);
 
                             if (dublicateDataTable.Rows.Count > 0)
                             {
@@ -157,21 +157,12 @@ namespace ReadAndSaveFile
                         }
                         else
                         {
-                            MessageBox.Show("");
+                            this.displayErrorCellAndLog();
                         }
                     }
                     else
                     {
-                        //Change the background color of cells whose content does not conform to the rules
-                        for (int i = 0; i < this._cSVFileHelper.ErrorRow.Count; i++)
-                        {
-                            this.dgvDataTable.Rows[this._cSVFileHelper.ErrorRow[i]].Cells[this._cSVFileHelper.ErrorColumn[i]].Style.BackColor = Color.Red;
-                            stringBuilder.Append(this._cSVFileHelper.ErrorMessage[i].ToString() + "\r\n");
-                        }
-
-                        //Output the specific cell information of the specific row that does not conform to the rule
-                        this.txtErrorLog.Text = stringBuilder.ToString();
-
+                        this.displayErrorCellAndLog();
                         MessageBox.Show("The file content does not conform to the rules.  See the error log output window for details");
                     }
                 }
@@ -191,6 +182,46 @@ namespace ReadAndSaveFile
         {
             //Disable the savefile button when the form is loaded
             this.btnSaveFile.Enabled = false;
+            this.btnRefresh.Enabled = false;
+        }
+
+        /// <summary>
+        /// Re-read the contents of the file
+        /// </summary>
+        /// <param name="sender">The btnRefresh_Click object itself</param>
+        /// <param name="e">Record additional information for clicking btnRefresh</param>
+        private void btnRefresh_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                //Get file content
+                this._cSVFileHelper.GetFileDataToDataTable(this._filePath);
+                //Display csv file datatable
+                this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable;
+            }
+            catch (ReadAndSaveFileException ex)
+            {
+                MessageBox.Show(ex.ExceptionMessage.ToString());
+            }
+        }
+
+
+        /// <summary>
+        /// Display cells and logs that do not conform to the rules
+        /// </summary>
+        private void displayErrorCellAndLog()
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            //Change the background color of cells whose content does not conform to the rules
+            for (int i = 0; i < this._cSVFileHelper.ErrorRow.Count; i++)
+            {
+                this.dgvDataTable.Rows[this._cSVFileHelper.ErrorRow[i]].Cells[this._cSVFileHelper.ErrorColumn[i]].Style.BackColor = Color.Red;
+                stringBuilder.Append(this._cSVFileHelper.ErrorMessage[i].ToString() + "\r\n");
+            }
+
+            this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorRow[0];
+            //Output the specific cell information of the specific row that does not conform to the rule
+            this.txtErrorLog.Text = stringBuilder.ToString();
         }
     }
 }
