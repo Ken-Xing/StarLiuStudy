@@ -5,7 +5,7 @@ using System.Data;
 
 namespace DbBase
 {
-    public class  DbHelper
+    public class DbHelper
     {
         #region Member
         private string _connStr = string.Empty;
@@ -84,14 +84,14 @@ namespace DbBase
         /// </summary>
         public void CloseDbConnection()
         {
-            if (this._sqlCon == null)
+            if (this._sqlCon != null)
             {
-                throw new Exception("Error:Connection Object Is Null");
+                if (this._sqlCon.State != ConnectionState.Closed)
+                {
+                    this._sqlCon.Close();
+                }
             }
-            else if (this._sqlCon.State != ConnectionState.Closed)
-            {
-                this._sqlCon.Close();
-            }
+           
         }
 
         /// <summary>
@@ -177,7 +177,7 @@ namespace DbBase
         /// <param name="sql">Sql command statement</param>
         /// <param name="sqlParameter">Provide arguments for sqlcommand</param>
         /// <returns>Returns true if the data is present and false otherwise</returns>
-        public bool CheckDataIsExists(string sql, SqlParameter sqlParameter)
+        public bool CheckDataIsExists(string sql, List<SqlParameter> sqlParameterList)
         {
             DataTable dataTable = new DataTable();
 
@@ -185,7 +185,7 @@ namespace DbBase
             {
                 this.OpenDbConnection();
                 SqlCommand sqlCommand = new SqlCommand(sql, this._sqlCon);
-                sqlCommand.Parameters.Add(sqlParameter);
+                sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
                 //Returns the results of the query
                 return int.Parse(sqlCommand.ExecuteScalar().ToString()) > 0;
             }

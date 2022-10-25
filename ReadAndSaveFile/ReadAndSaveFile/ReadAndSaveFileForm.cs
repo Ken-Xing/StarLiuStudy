@@ -81,8 +81,9 @@ namespace ReadAndSaveFile
             int nameMaxLength = 64;
             int emailMaxLength = 64;
             string targetTable = "StudentAdmissionInfo";
-            string findDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
-            DataTable dublicateDataTable = new DataTable();
+            string findDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
+            string findPossibleDuplicateDataSql = "Exec sp_CheckStudentAdmissionInforDetailIsMatch @Name = @Name, @Age = @Age, @Sex = @Sex";
+            DataTable duplicateDataTable = new DataTable();
             DataTable notDublicateDataTable = new DataTable();
             string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoBySnmber @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
 
@@ -99,33 +100,58 @@ namespace ReadAndSaveFile
                         //Check if the file contains duplicate content
                         if (this._cSVFileHelper.CheckCSVDataIsDuplicated())
                         {
+                       
                             //Get duplicate and non-duplicate data
-                            this._cSVFileHelper.GetDuplicatedAndDuplicateedData(findDataSql, this._connStr);
-
-                            if (dublicateDataTable.Rows.Count > 0)
+                            this._cSVFileHelper.SiftFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
+                            if (this._cSVFileHelper.PossibleDuplicateDataTable.Rows.Count > 0)
                             {
-                                DialogResult dialogResult = MessageBox.Show("The data in the file and the data in the database are duplicated.Do you override duplicate data?", "File content duplication prompts", MessageBoxButtons.YesNo);
-                                //Duplicate data is overwritten if it exists
-                                if (dialogResult.Equals(DialogResult.Yes))
+                                
+
+                                //PossibleDuplicateDateForm possibleDuplicateDateForm = new PossibleDuplicateDateForm();
+                               
+                                //possibleDuplicateDateForm.ShowDialog();
+
+                                if (this._cSVFileHelper.DuplicateDataTable.Rows.Count > 0)
                                 {
-                                    //Insert non-duplicate data and update duplicate data
-                                    if (this._cSVFileHelper.SaveAndUpdateData(updateDataSql, updateDataSql, this._cSVFileHelper.DuplicateDataTable, this._cSVFileHelper.NotDuplicateDataTable, targetTable))
+
+                                    DialogResult dialogResult = MessageBox.Show("The data in the file and the data in the database are duplicated.Do you override duplicate data?", "File content duplication prompts", MessageBoxButtons.YesNo);
+                                    //Duplicate data is overwritten if it exists
+                                    if (dialogResult.Equals(DialogResult.Yes))
                                     {
-                                        this._filePath = string.Empty;
-                                        this._cSVFileHelper.DestroyCSVContentDataTable();
-                                        this.dgvDataTable.DataSource = null;
-                                        MessageBox.Show("Success");
+                                        //Insert non-duplicate data and update duplicate data
+                                        if (this._cSVFileHelper.SaveAndUpdateData(updateDataSql, updateDataSql, this._cSVFileHelper.DuplicateDataTable, this._cSVFileHelper.NotDuplicateDataTable, targetTable))
+                                        {
+                                            this._filePath = string.Empty;
+                                            this._cSVFileHelper.DestroyCSVContentDataTable();
+                                            this.dgvDataTable.DataSource = null;
+                                            MessageBox.Show("Success");
+                                        }
+                                        else
+                                        {
+                                            MessageBox.Show("Fail");
+                                        }
+
                                     }
+                                    //Insert data that is not duplicated
                                     else
                                     {
-                                        MessageBox.Show("Fail");
+                                        //save file content data to database
+                                        if (dbhelper.SaveBulkNotDuplicateData(notDublicateDataTable, targetTable))
+                                        {
+                                            this._filePath = string.Empty;
+                                            this._cSVFileHelper.DestroyCSVContentDataTable();
+                                            this.dgvDataTable.DataSource = null;
+                                            MessageBox.Show("Success");
+                                        }
+                                        else
+                                        {
+                                            MessageBox.Show("Fail");
+                                        }
                                     }
-
                                 }
-                                //Insert data that is not duplicated
+                                //Holds the contents of data that is not duplicated
                                 else
                                 {
-                                    //save file content data to database
                                     if (dbhelper.SaveBulkNotDuplicateData(notDublicateDataTable, targetTable))
                                     {
                                         this._filePath = string.Empty;
@@ -139,25 +165,10 @@ namespace ReadAndSaveFile
                                     }
                                 }
                             }
-                            //Holds the contents of data that is not duplicated
                             else
                             {
-                                if (dbhelper.SaveBulkNotDuplicateData(notDublicateDataTable, targetTable))
-                                {
-                                    this._filePath = string.Empty;
-                                    this._cSVFileHelper.DestroyCSVContentDataTable();
-                                    this.dgvDataTable.DataSource = null;
-                                    MessageBox.Show("Success");
-                                }
-                                else
-                                {
-                                    MessageBox.Show("Fail");
-                                }
+                                this.displayErrorCellAndLog();
                             }
-                        }
-                        else
-                        {
-                            this.displayErrorCellAndLog();
                         }
                     }
                     else
@@ -183,6 +194,20 @@ namespace ReadAndSaveFile
             //Disable the savefile button when the form is loaded
             this.btnSaveFile.Enabled = false;
             this.btnRefresh.Enabled = false;
+            //Change the background color of the input box
+            this.txtEmptyContent.Text = "EmptyContent";
+            this.txtDuplicateContent.Text = "DuplicateContent";
+            this.txtDuplicateDbContent.Text = "DuplicateDatabaseContent";
+            this.txtErrorContent.Text = "ErrorContent";
+            this.txtCharacterLengthError.Text = "CharacterLengthError";
+            this.txtFiledTypeError.Text = "FiledTypeError";
+            this.txtEmptyContent.BackColor = Color.Red;
+            this.txtDuplicateContent.BackColor = Color.Gray;
+            this.txtDuplicateDbContent.BackColor = Color.LightYellow;
+            this.txtCharacterLengthError.BackColor = Color.LightPink;
+            this.txtFiledTypeError.BackColor = Color.Orange;
+            this.txtErrorContent.BackColor = Color.LightSteelBlue;
+
         }
 
         /// <summary>
@@ -192,16 +217,19 @@ namespace ReadAndSaveFile
         /// <param name="e">Record additional information for clicking btnRefresh</param>
         private void btnRefresh_Click(object sender, EventArgs e)
         {
-            try
+            if (this._filePath != null)
             {
-                //Get file content
-                this._cSVFileHelper.GetFileDataToDataTable(this._filePath);
-                //Display csv file datatable
-                this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable;
-            }
-            catch (ReadAndSaveFileException ex)
-            {
-                MessageBox.Show(ex.ExceptionMessage.ToString());
+                try
+                {
+                    //Get file content
+                    this._cSVFileHelper.GetFileDataToDataTable(this._filePath);
+                    //Display csv file datatable
+                    this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable;
+                }
+                catch (ReadAndSaveFileException ex)
+                {
+                    MessageBox.Show(ex.ExceptionMessage.ToString());
+                }
             }
         }
 
@@ -211,17 +239,42 @@ namespace ReadAndSaveFile
         /// </summary>
         private void displayErrorCellAndLog()
         {
+            ErrorCellInformation errorCellInformation = new ErrorCellInformation();
             StringBuilder stringBuilder = new StringBuilder();
-            //Change the background color of cells whose content does not conform to the rules
-            for (int i = 0; i < this._cSVFileHelper.ErrorRow.Count; i++)
+
+            //Change the cell background color to a different color by enumerating different values
+            for (int i = 0; i < this._cSVFileHelper.ErrorCellInformationList.Count; i++)
             {
-                this.dgvDataTable.Rows[this._cSVFileHelper.ErrorRow[i]].Cells[this._cSVFileHelper.ErrorColumn[i]].Style.BackColor = Color.Red;
-                stringBuilder.Append(this._cSVFileHelper.ErrorMessage[i].ToString() + "\r\n");
+                switch (this._cSVFileHelper.ErrorCellInformationList[i].ErrorType)
+                {
+                    case ErrorCellInformation._errorTypeEnum.emptyContent:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Red;
+                        break;
+                    case ErrorCellInformation._errorTypeEnum.duplicateContent:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Gray;
+                        break;
+                    case ErrorCellInformation._errorTypeEnum.duplicateDbContent:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.LightYellow;
+                        break;
+                    case ErrorCellInformation._errorTypeEnum.filedTypeError:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Orange;
+                        break;
+                    case ErrorCellInformation._errorTypeEnum.characterLengthError:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.LightPink;
+                        break;
+                    case ErrorCellInformation._errorTypeEnum.contentError:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.LightSteelBlue;
+                        break;
+                }
+                //Displays a specific error message for a specific cell
+
+                stringBuilder.Append(this._cSVFileHelper.ErrorCellInformationList[i].ErrorMessage.ToString() + "\r\n");
             }
 
-            this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorRow[0];
+            this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
             //Output the specific cell information of the specific row that does not conform to the rule
             this.txtErrorLog.Text = stringBuilder.ToString();
+            this._cSVFileHelper.DestroyErrorCellInformation();
         }
     }
 }
