@@ -1,6 +1,9 @@
-﻿using ReadAndSaveCSVFile;
+﻿using DbBase;
+using ReadAndSaveCSVFile;
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Drawing;
 using System.IO;
 using System.Text;
@@ -13,6 +16,7 @@ namespace ReadAndSaveFile
         private string _filePath = string.Empty;
         private string _connStr = string.Empty;
         private CSVFileHelper _cSVFileHelper = new CSVFileHelper();
+        private StringBuilder _log = new StringBuilder();
         #endregion
 
 
@@ -44,7 +48,7 @@ namespace ReadAndSaveFile
                         //Get file content
                         this._cSVFileHelper.GetFileDataToDataTable(this._filePath);
                         //Display csv file datatable
-                        this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable;
+                        this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable.Copy();
 
                     }
                     catch (ReadAndSaveFileException ex)
@@ -86,7 +90,7 @@ namespace ReadAndSaveFile
             DataTable duplicateDataTable = new DataTable();
             DataTable notDublicateDataTable = new DataTable();
             string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoBySnmber @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
-
+   
 
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
@@ -100,17 +104,19 @@ namespace ReadAndSaveFile
                         //Check if the file contains duplicate content
                         if (this._cSVFileHelper.CheckCSVDataIsDuplicated())
                         {
-                       
+
                             //Get duplicate and non-duplicate data
                             this._cSVFileHelper.SiftFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
                             if (this._cSVFileHelper.PossibleDuplicateDataTable.Rows.Count > 0)
                             {
-                                
+                                MessageBox.Show("If suspected duplicate data is found, please deal with suspected duplicate data!");
 
-                                //PossibleDuplicateDateForm possibleDuplicateDateForm = new PossibleDuplicateDateForm();
-                               
-                                //possibleDuplicateDateForm.ShowDialog();
+                                SaveAndOverwritePossibleDuplicateDataForm saveAndOverwritePossibleDuplicateDataForm = new SaveAndOverwritePossibleDuplicateDataForm(this._cSVFileHelper, this._connStr);
+                                saveAndOverwritePossibleDuplicateDataForm.ShowDialog();
+                            }
 
+                            if (this._cSVFileHelper.PossibleDuplicateDataTable.Rows.Count == 0)
+                            {
                                 if (this._cSVFileHelper.DuplicateDataTable.Rows.Count > 0)
                                 {
 
@@ -165,6 +171,7 @@ namespace ReadAndSaveFile
                                     }
                                 }
                             }
+
                             else
                             {
                                 this.displayErrorCellAndLog();
@@ -181,6 +188,10 @@ namespace ReadAndSaveFile
                 catch (ReadAndSaveFileException ex)
                 {
                     MessageBox.Show(ex.ExceptionMessage.ToString());
+                }
+                catch
+                {
+                    throw;
                 }
             }
             else
@@ -240,7 +251,7 @@ namespace ReadAndSaveFile
         private void displayErrorCellAndLog()
         {
             ErrorCellInformation errorCellInformation = new ErrorCellInformation();
-            StringBuilder stringBuilder = new StringBuilder();
+
 
             //Change the cell background color to a different color by enumerating different values
             for (int i = 0; i < this._cSVFileHelper.ErrorCellInformationList.Count; i++)
@@ -267,14 +278,86 @@ namespace ReadAndSaveFile
                         break;
                 }
                 //Displays a specific error message for a specific cell
-
-                stringBuilder.Append(this._cSVFileHelper.ErrorCellInformationList[i].ErrorMessage.ToString() + "\r\n");
+                this._log.Append(this._cSVFileHelper.ErrorCellInformationList[i].ErrorMessage.ToString() + "\r\n");
+                this.txtLog.Text = this._log.ToString();
             }
 
-            this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
+            //this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
             //Output the specific cell information of the specific row that does not conform to the rule
-            this.txtErrorLog.Text = stringBuilder.ToString();
+            this.txtLog.Text = this._log.ToString();
             this._cSVFileHelper.DestroyErrorCellInformation();
+        }
+
+        private void dgvDataTable_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            List<SqlParameter> sqlParametersList = new List<SqlParameter>();
+            string saveSql = "EXEC sp_AddStudentAdmissionInfoDetial  @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
+            string overwriteSql = "EXEC sp_OverwriteStudentAdmissionInfoSnumber @Name = @Name, @Age = @Age, @Sex = @Sex, @Email= @Email";
+            int selectRowIndex = this.dgvDataTable.SelectedCells[0].RowIndex;
+            DbHelper dbHelper = new DbHelper(this._connStr);
+
+            var a = this.dgvDataTable.Rows[selectRowIndex].Cells[0].Value;
+
+            //Overwrite Possible duplicate data
+            if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Overwrite"))
+            {
+                sqlParametersList.Add(new SqlParameter("@Name", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Name"]));
+                sqlParametersList.Add(new SqlParameter("@Age", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Age"]));
+                sqlParametersList.Add(new SqlParameter("@Sex", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Sex"]));
+                sqlParametersList.Add(new SqlParameter("@Email", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Email"]));
+
+                if (dbHelper.SaveModifyDeleteData(overwriteSql, sqlParametersList))
+                {
+                    MessageBox.Show("Success");
+                    this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
+                    this._log.Append(DateTime.Now.ToString("HH:mm:ss") + " " + "Overwrite data successfully!" + "\r\n");
+                    this.txtLog.Text = this._log.ToString();
+                }
+            }
+            //Save as new data
+            else if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Save"))
+            {
+                sqlParametersList.Add(new SqlParameter("@Name", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Name"]));
+                sqlParametersList.Add(new SqlParameter("@Age", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Age"]));
+                sqlParametersList.Add(new SqlParameter("@Sex", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Sex"]));
+                sqlParametersList.Add(new SqlParameter("@Email", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Email"]));
+
+                if (dbHelper.SaveModifyDeleteData(saveSql, sqlParametersList))
+                {
+                    MessageBox.Show("Success");
+                    this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
+                    this._log.Append(DateTime.Now.ToString("HH:mm:ss") + " " + "Save data successfully!" + "\r\n");
+                    this.txtLog.Text = this._log.ToString();
+                }
+            }
+
+            sqlParametersList.Clear();
+        }
+
+        private void dgvDataTable_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+
+            if (e.RowIndex != -1 && e.ColumnIndex != -1)
+            {
+
+
+                if ((bool)dgvDataTable.Rows[e.RowIndex].Cells[0].EditedFormattedValue == true)
+                {
+                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = false;
+                }
+                else
+                {
+                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = true;
+                }
+            }
+        }
+
+        private void dgvDataTable_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (this.dgvDataTable.Columns[e.ColumnIndex].Name == "Select")
+            {
+                if (e.Value == null) e.Value = false;
+            }
         }
     }
 }

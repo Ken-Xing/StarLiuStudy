@@ -30,7 +30,7 @@
         {
             this.btnReadFile = new System.Windows.Forms.Button();
             this.dgvDataTable = new System.Windows.Forms.DataGridView();
-            this.txtErrorLog = new System.Windows.Forms.TextBox();
+            this.txtLog = new System.Windows.Forms.TextBox();
             this.btnSaveFile = new System.Windows.Forms.Button();
             this.btnRefresh = new System.Windows.Forms.Button();
             this.txtEmptyContent = new System.Windows.Forms.TextBox();
@@ -62,36 +62,40 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dgvDataTable.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvDataTable.Location = new System.Drawing.Point(0, 0);
+            this.dgvDataTable.Location = new System.Drawing.Point(-7, 0);
             this.dgvDataTable.Name = "dgvDataTable";
             this.dgvDataTable.ReadOnly = true;
             this.dgvDataTable.RowHeadersWidth = 51;
             this.dgvDataTable.RowTemplate.Height = 23;
             this.dgvDataTable.Size = new System.Drawing.Size(569, 372);
             this.dgvDataTable.TabIndex = 0;
+            this.dgvDataTable.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvDataTable_CellContentClick);
+            this.dgvDataTable.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.dgvDataTable_CellFormatting);
+            this.dgvDataTable.CellMouseClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.dgvDataTable_CellMouseClick);
             // 
-            // txtErrorLog
+            // txtLog
             // 
-            this.txtErrorLog.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            this.txtLog.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtErrorLog.Location = new System.Drawing.Point(568, 0);
-            this.txtErrorLog.Multiline = true;
-            this.txtErrorLog.Name = "txtErrorLog";
-            this.txtErrorLog.ReadOnly = true;
-            this.txtErrorLog.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtErrorLog.Size = new System.Drawing.Size(232, 372);
-            this.txtErrorLog.TabIndex = 4;
-            this.txtErrorLog.WordWrap = false;
+            this.txtLog.Location = new System.Drawing.Point(568, 0);
+            this.txtLog.Multiline = true;
+            this.txtLog.Name = "txtLog";
+            this.txtLog.ReadOnly = true;
+            this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            this.txtLog.Size = new System.Drawing.Size(232, 372);
+            this.txtLog.TabIndex = 4;
+            this.txtLog.WordWrap = false;
             // 
             // btnSaveFile
             // 
             this.btnSaveFile.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnSaveFile.Location = new System.Drawing.Point(443, 415);
+            this.btnSaveFile.BackColor = System.Drawing.SystemColors.Menu;
+            this.btnSaveFile.Location = new System.Drawing.Point(443, 416);
             this.btnSaveFile.Name = "btnSaveFile";
-            this.btnSaveFile.Size = new System.Drawing.Size(75, 23);
+            this.btnSaveFile.Size = new System.Drawing.Size(75, 22);
             this.btnSaveFile.TabIndex = 3;
             this.btnSaveFile.Text = "Save file";
-            this.btnSaveFile.UseVisualStyleBackColor = true;
+            this.btnSaveFile.UseVisualStyleBackColor = false;
             this.btnSaveFile.Click += new System.EventHandler(this.btnSaveFile_Click);
             // 
             // btnRefresh
@@ -163,6 +167,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.SystemColors.Menu;
             this.ClientSize = new System.Drawing.Size(800, 450);
             this.Controls.Add(this.txtErrorContent);
             this.Controls.Add(this.txtCharacterLengthError);
@@ -171,10 +176,11 @@
             this.Controls.Add(this.txtDuplicateContent);
             this.Controls.Add(this.txtEmptyContent);
             this.Controls.Add(this.btnRefresh);
-            this.Controls.Add(this.txtErrorLog);
+            this.Controls.Add(this.txtLog);
             this.Controls.Add(this.btnSaveFile);
             this.Controls.Add(this.btnReadFile);
             this.Controls.Add(this.dgvDataTable);
+            this.ForeColor = System.Drawing.SystemColors.ControlText;
             this.Name = "ReadAndSaveFileForm";
             this.Text = "ReadAndSaveFileForm";
             this.Load += new System.EventHandler(this.ReadAndSaveFileForm_Load);
@@ -187,7 +193,7 @@
         #endregion
         private System.Windows.Forms.Button btnReadFile;
         private System.Windows.Forms.DataGridView dgvDataTable;
-        private System.Windows.Forms.TextBox txtErrorLog;
+        private System.Windows.Forms.TextBox txtLog;
         private System.Windows.Forms.Button btnSaveFile;
         private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.TextBox txtEmptyContent;

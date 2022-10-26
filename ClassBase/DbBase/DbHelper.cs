@@ -123,6 +123,26 @@ namespace DbBase
             }
         }
 
+        public bool SaveModifyDeleteBulkData(string sql, List<SqlParameter> list, SqlCommand sqlCommand)
+        {
+            bool result = false;
+            
+            sqlCommand.Parameters.AddRange(list.ToArray());
+
+            try
+            {
+                //Return 
+                result= sqlCommand.ExecuteNonQuery() > 0;
+                sqlCommand.Parameters.Clear();
+
+                return result;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
         /// <summary>
         /// Save file contet data to database
         /// </summary>
