@@ -39,6 +39,10 @@
             this.txtFiledTypeError = new System.Windows.Forms.TextBox();
             this.txtCharacterLengthError = new System.Windows.Forms.TextBox();
             this.txtErrorContent = new System.Windows.Forms.TextBox();
+            this.btnBatchOverwrite = new System.Windows.Forms.Button();
+            this.btnBatchsSaving = new System.Windows.Forms.Button();
+            this.btnNotSelectAll = new System.Windows.Forms.Button();
+            this.btnSelectAll = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgvDataTable)).BeginInit();
             this.SuspendLayout();
             // 
@@ -163,12 +167,64 @@
             this.txtErrorContent.Size = new System.Drawing.Size(117, 21);
             this.txtErrorContent.TabIndex = 11;
             // 
+            // btnBatchOverwrite
+            // 
+            this.btnBatchOverwrite.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.btnBatchOverwrite.Location = new System.Drawing.Point(587, 384);
+            this.btnBatchOverwrite.Name = "btnBatchOverwrite";
+            this.btnBatchOverwrite.Size = new System.Drawing.Size(136, 23);
+            this.btnBatchOverwrite.TabIndex = 15;
+            this.btnBatchOverwrite.Text = "BatchOverwrite";
+            this.btnBatchOverwrite.UseVisualStyleBackColor = true;
+            this.btnBatchOverwrite.Click += new System.EventHandler(this.btnBatchOverwrite_Click);
+            // 
+            // btnBatchsSaving
+            // 
+            this.btnBatchsSaving.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.btnBatchsSaving.Location = new System.Drawing.Point(427, 384);
+            this.btnBatchsSaving.Name = "btnBatchsSaving";
+            this.btnBatchsSaving.Size = new System.Drawing.Size(136, 23);
+            this.btnBatchsSaving.TabIndex = 14;
+            this.btnBatchsSaving.Text = "BatchsSaving";
+            this.btnBatchsSaving.UseVisualStyleBackColor = true;
+            this.btnBatchsSaving.Click += new System.EventHandler(this.btnBatchsSaving_Click);
+            // 
+            // btnNotSelectAll
+            // 
+            this.btnNotSelectAll.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.btnNotSelectAll.Location = new System.Drawing.Point(235, 384);
+            this.btnNotSelectAll.Name = "btnNotSelectAll";
+            this.btnNotSelectAll.Size = new System.Drawing.Size(136, 23);
+            this.btnNotSelectAll.TabIndex = 13;
+            this.btnNotSelectAll.Text = "Not select all";
+            this.btnNotSelectAll.UseVisualStyleBackColor = true;
+            this.btnNotSelectAll.Click += new System.EventHandler(this.btnNotSelectAll_Click);
+            // 
+            // btnSelectAll
+            // 
+            this.btnSelectAll.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.btnSelectAll.Location = new System.Drawing.Point(67, 384);
+            this.btnSelectAll.Name = "btnSelectAll";
+            this.btnSelectAll.Size = new System.Drawing.Size(136, 23);
+            this.btnSelectAll.TabIndex = 12;
+            this.btnSelectAll.Text = "Select all";
+            this.btnSelectAll.UseVisualStyleBackColor = true;
+            this.btnSelectAll.Click += new System.EventHandler(this.btnSelectAll_Click);
+            // 
             // ReadAndSaveFileForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Menu;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.btnBatchOverwrite);
+            this.Controls.Add(this.btnBatchsSaving);
+            this.Controls.Add(this.btnNotSelectAll);
+            this.Controls.Add(this.btnSelectAll);
             this.Controls.Add(this.txtErrorContent);
             this.Controls.Add(this.txtCharacterLengthError);
             this.Controls.Add(this.txtFiledTypeError);
@@ -202,5 +258,9 @@
         private System.Windows.Forms.TextBox txtFiledTypeError;
         private System.Windows.Forms.TextBox txtCharacterLengthError;
         private System.Windows.Forms.TextBox txtErrorContent;
+        private System.Windows.Forms.Button btnBatchOverwrite;
+        private System.Windows.Forms.Button btnBatchsSaving;
+        private System.Windows.Forms.Button btnNotSelectAll;
+        private System.Windows.Forms.Button btnSelectAll;
     }
 }

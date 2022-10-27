@@ -303,11 +303,6 @@ namespace ReadAndSaveCSVFile
                 }
             }
         }
-
-
-
-
-
         public bool SaveAndUpdateData(string connStr, string sql, DataTable duplicateDataTable, DataTable notDuplicateTable, string targetTable)
         {
             bool result = false;
