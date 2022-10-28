@@ -46,15 +46,6 @@ namespace DbBase
             this._sqlCon = new SqlConnection(connStr);
         }
 
-        ///// <summary>
-        ///// Initializes a new instance of the <see cref="DbHelper"/> class.
-        ///// </summary>
-        //public Dbhelper()
-        //{
-        //    this._connStr = "Server = 192.168.0.236,1433; Initial Catalog = ITLTest; user Id = EKSDBUser; Password = qwe123!@#;";
-        //    this._sqlCon = new SqlConnection(ConnStr);
-        //}
-
         /// <summary>
         /// Open DataBase Connection
         /// </summary>
@@ -98,30 +89,55 @@ namespace DbBase
         /// Save, modify, delete data
         /// </summary>
         /// <param name="sql">Sql command statement</param>
-        /// <param name="list">Provide arguments for sqlcommand</param>
+        /// <param name="sqlParameterList">Provide arguments for sqlcommand</param>
         /// <returns>Returns true if the opreate was successful, false otherwise</returns>
-        public bool SaveModifyDeleteData(string sql, List<SqlParameter> list)
+        public bool SaveModifyDeleteData(string sql, List<SqlParameter> sqlParameterList)
         {
+            SqlCommand sqlCommand = new SqlCommand(sql, this._sqlCon);
+            sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
+
             try
             {
-                this.OpenDbConnection();
-
-                SqlCommand sqlCmd = new SqlCommand(sql, this._sqlCon);
-
-                sqlCmd.Parameters.AddRange(list.ToArray());
-                //Return 
-                return sqlCmd.ExecuteNonQuery() > 0;
+                return sqlCommand.ExecuteNonQuery() > 0;
             }
             catch
             {
-                return false;
+                throw;
             }
             finally
             {
-                //Forcibly close the Database connection
-                this.CloseDbConnection();
+                sqlCommand.Parameters.Clear();
             }
         }
+
+        /// <summary>
+        /// Use transactions to save, modify, and delete data
+        /// </summary>
+        /// <param name="sql">Sql command statement</param>
+        /// <param name="sqlParameterList">Provide arguments for sqlcommand</param>
+        /// <param name="sqlTransaction">Used to manipulate database transactions</param>
+        /// <param name="sqlCommand">An object that operates on the database</param>
+        /// <returns></returns>
+        public bool SaveModifyDeleteData(string sql, List<SqlParameter> sqlParameterList, SqlTransaction sqlTransaction, SqlCommand sqlCommand)
+        {
+            sqlCommand.CommandText = sql;
+            sqlCommand.Transaction = sqlTransaction;
+            sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
+
+            try
+            {
+                return sqlCommand.ExecuteNonQuery() > 0;
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                sqlCommand.Parameters.Clear();
+            }
+        }
+
 
         /// <summary>
         /// Save file contet data to database
@@ -129,7 +145,7 @@ namespace DbBase
         /// <param name="dataTable">This is a datatable of file content transformation</param>
         /// <returns>If the file content data is saved successfully, return true. If it fails, return false</returns>
         /// <exception cref="ReadAndSaveFileException">Throws an exception when the structure of the file does not conform to the rules</exception>
-        public bool SaveBulkNotDuplicateData(DataTable dataTable, string targetTable)
+        public bool SaveBulkData(DataTable dataTable, string targetTable)
         {
             SqlBulkCopy sqlBulkCopy = null;
 
@@ -157,7 +173,7 @@ namespace DbBase
                     return false;
                 }
             }
-            catch (SqlException)
+            catch
             {
                 throw;
             }
@@ -179,13 +195,12 @@ namespace DbBase
         /// <returns>Returns true if the data is present and false otherwise</returns>
         public bool CheckDataIsExists(string sql, List<SqlParameter> sqlParameterList)
         {
-            DataTable dataTable = new DataTable();
+
+            SqlCommand sqlCommand = new SqlCommand(sql, this._sqlCon);
+            sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
 
             try
             {
-                this.OpenDbConnection();
-                SqlCommand sqlCommand = new SqlCommand(sql, this._sqlCon);
-                sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
                 //Returns the results of the query
                 return int.Parse(sqlCommand.ExecuteScalar().ToString()) > 0;
             }
@@ -195,7 +210,7 @@ namespace DbBase
             }
             finally
             {
-                this.CloseDbConnection();
+                sqlCommand.Parameters.Clear();
             }
         }
     }

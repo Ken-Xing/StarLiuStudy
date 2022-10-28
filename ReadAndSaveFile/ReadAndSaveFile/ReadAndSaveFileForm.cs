@@ -7,6 +7,7 @@ using System.Data.SqlClient;
 using System.Drawing;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 namespace ReadAndSaveFile
 {
@@ -95,16 +96,13 @@ namespace ReadAndSaveFile
         private void btnSaveFile_Click(object sender, EventArgs e)
         {
             this._connStr = "Server = 192.168.0.236,1433; Initial Catalog = ITLTest;user Id = EKSDBUser; Password = qwe123!@#;";
-            string targetTable = "StudentAdmissionInfo";
             string findDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
             string findPossibleDuplicateDataSql = "Exec sp_CheckStudentAdmissionInforDetailIsMatch @Name = @Name, @Age = @Age, @Sex = @Sex";
-            string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoBySnmber @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
+            string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoByEmail @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
+            string saveSql = "EXEC sp_AddStudentAdmissionInfoDetial  @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
             DbHelper dbhelper = new DbHelper(this._connStr);
-            string fileContent = string.Empty;
             int nameMaxLength = 64;
             int emailMaxLength = 64;
-            DataTable duplicateDataTable = new DataTable();
-            DataTable notDublicateDataTable = new DataTable();
             DataGridViewButtonColumn btnOverwrite = new DataGridViewButtonColumn();
             DataGridViewButtonColumn btnSave = new DataGridViewButtonColumn();
             DataGridViewCheckBoxColumn chkSelect = new DataGridViewCheckBoxColumn();
@@ -119,6 +117,7 @@ namespace ReadAndSaveFile
             btnOverwrite.DefaultCellStyle.NullValue = "Overwrite";
             chkSelect.DefaultCellStyle.NullValue = "Select";
 
+
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
                 //Get the file content data
@@ -131,19 +130,21 @@ namespace ReadAndSaveFile
                         if (this._cSVFileHelper.CheckCSVDataIsDuplicated())
                         {
                             //Get duplicate and non-duplicate data
-                            this._cSVFileHelper.SiftFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
+                            this._cSVFileHelper.SiftedFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
                             if (this._cSVFileHelper.PossibleDuplicateDataTable.Rows.Count > 0)
                             {
-
+                                //
                                 MessageBox.Show("If suspected duplicate data is found, please deal with suspected duplicate data!");
+                                this.dgvDataTable.DataSource = this._cSVFileHelper.PossibleDuplicateDataTable.Copy();
+                                this.dgvDataTable.Columns["State"].Visible = false;
                                 this.UpdateInputVisibleState(false);
-                                this.dgvDataTable.DataSource = this._cSVFileHelper.PossibleDuplicateDataTable;
                                 this.dgvDataTable.Columns.Add(btnSave);
                                 this.dgvDataTable.Columns.Add(btnOverwrite);
 
                                 //Add checkbox and buttons
                                 if (this.dgvDataTable.Rows.Count > 1)
                                 {
+                                    //Insert the checkbox in the first column
                                     this.dgvDataTable.Columns.Insert(0, chkSelect);
                                 }
 
@@ -151,15 +152,13 @@ namespace ReadAndSaveFile
                                 {
                                     this.dgvDataTable.Rows[i].Cells[0].Value = false;
                                 }
-                                if (this.dgvDataTable.Rows.Count > 0)
-                                {
-                                    this.btnSaveFile.Enabled = false;
-                                }
+
                                 this.UpdateButtonVisibleState(true);
+                                this.btnSaveFile.Enabled=false;
 
                             }
 
-                            if (this._cSVFileHelper.PossibleDuplicateDataTable.Rows.Count == 0)
+                            if (this.dgvDataTable.Rows.Count == 0)
                             {
                                 if (this._cSVFileHelper.DuplicateDataTable.Rows.Count > 0)
                                 {
@@ -168,7 +167,7 @@ namespace ReadAndSaveFile
                                     if (dialogResult.Equals(DialogResult.Yes))
                                     {
                                         //Insert non-duplicate data and update duplicate data
-                                        if (this._cSVFileHelper.SaveAndUpdateData(updateDataSql, updateDataSql, this._cSVFileHelper.DuplicateDataTable, this._cSVFileHelper.NotDuplicateDataTable, targetTable))
+                                        if (this.UpdateDupicateAndSaveNotDuplicateData(updateDataSql, saveSql, this._cSVFileHelper.DuplicateDataTable, this._cSVFileHelper.NotDuplicateDataTable))
                                         {
                                             this._filePath = string.Empty;
                                             this._cSVFileHelper.DestroyCSVContentDataTable();
@@ -183,40 +182,71 @@ namespace ReadAndSaveFile
                                     //Insert data that is not duplicated
                                     else
                                     {
-                                        //save file content data to database
-                                        if (dbhelper.SaveBulkNotDuplicateData(notDublicateDataTable, targetTable))
+                                        if (this._cSVFileHelper.NotDuplicateDataTable != null)
                                         {
-                                            this._filePath = string.Empty;
-                                            this._cSVFileHelper.DestroyCSVContentDataTable();
-                                            this.dgvDataTable.DataSource = null;
-                                            MessageBox.Show("Success");
+                                            //save file content data to database
+                                            if (this.SaveUpdateDeleteBulkData(saveSql, this._cSVFileHelper.NotDuplicateDataTable, true))
+                                            {
+                                                this._filePath = string.Empty;
+                                                this._cSVFileHelper.DestroyCSVContentDataTable();
+                                                this.dgvDataTable.DataSource = null;
+                                                MessageBox.Show("Success");
+                                            }
+                                            else
+                                            {
+                                                MessageBox.Show("Fail");
+                                            }
                                         }
                                         else
                                         {
-                                            MessageBox.Show("Fail");
+                                            MessageBox.Show("There is no data that does not duplicate the database content");
                                         }
+
                                     }
                                 }
                                 //Holds the contents of data that is not duplicated
                                 else
                                 {
-                                    if (dbhelper.SaveBulkNotDuplicateData(notDublicateDataTable, targetTable))
+                                    if (this._cSVFileHelper.NotDuplicateDataTable != null)
                                     {
-                                        this._filePath = string.Empty;
-                                        this._cSVFileHelper.DestroyCSVContentDataTable();
-                                        this.dgvDataTable.DataSource = null;
-                                        MessageBox.Show("Success");
+
+                                        try
+                                        {
+                                            if (this.SaveUpdateDeleteBulkData(saveSql, this._cSVFileHelper.NotDuplicateDataTable, true))
+                                            {
+                                                this._filePath = string.Empty;
+                                                this._cSVFileHelper.DestroyCSVContentDataTable();
+                                                this.dgvDataTable.DataSource = null;
+                                                MessageBox.Show("Success");
+                                            }
+                                            else
+                                            {
+                                                MessageBox.Show("Fail");
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            throw;
+                                        }
+
                                     }
                                     else
                                     {
-                                        MessageBox.Show("Fail");
+                                        MessageBox.Show("There is no data that does not duplicate the database content");
                                     }
+
                                 }
                             }
-                            else
-                            {
-                                this.displayErrorCellAndLog();
-                            }
+                            //else
+                            //{
+                            //    this.displayErrorCellAndLog();
+                            //}
+                        }
+                        else
+                        {
+                            MessageBox.Show("Please deal with duplicate data in the file");
+                            this.btnSaveFile.Enabled = false;
+                            this.displayErrorCellAndLog();
                         }
                     }
                     else
@@ -267,74 +297,25 @@ namespace ReadAndSaveFile
 
         private void dgvDataTable_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-
-            List<SqlParameter> sqlParametersList = new List<SqlParameter>();
-            string saveSql = "EXEC sp_AddStudentAdmissionInfoDetial  @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
-            string overwriteSql = "EXEC sp_OverwriteStudentAdmissionInfoSnumber @Name = @Name, @Age = @Age, @Sex = @Sex, @Email= @Email";
             int selectRowIndex = this.dgvDataTable.SelectedCells[0].RowIndex;
-            DbHelper dbHelper = new DbHelper(this._connStr);
-
-
             //Overwrite Possible duplicate data
             if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Overwrite"))
             {
-                sqlParametersList.Add(new SqlParameter("@Name", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Name"]));
-                sqlParametersList.Add(new SqlParameter("@Age", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Age"]));
-                sqlParametersList.Add(new SqlParameter("@Sex", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Sex"]));
-                sqlParametersList.Add(new SqlParameter("@Email", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Email"]));
-
-                try
-                {
-                    if (dbHelper.SaveModifyDeleteData(overwriteSql, sqlParametersList))
-                    {
-                        MessageBox.Show("Success");
-                        this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
-                        //this._log.Append(DateTime.Now.ToString("HH:mm:ss") + " " + "Overwrite data successfully!" + "\r\n");
-                        //this.txtLog.Text = this._log.ToString();
-                    }
-                    else
-                    {
-                        MessageBox.Show("fail");
-                    }
-
-                }
-                catch
-                {
-
-                    MessageBox.Show("fail");
-                }
+                this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["State"] = CSVFileHelper._state.overwrite;
+                this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
             }
             //Save as new data
             else if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Save"))
             {
-                sqlParametersList.Add(new SqlParameter("@Name", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Name"]));
-                sqlParametersList.Add(new SqlParameter("@Age", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Age"]));
-                sqlParametersList.Add(new SqlParameter("@Sex", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Sex"]));
-                sqlParametersList.Add(new SqlParameter("@Email", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex]["Email"]));
-
-                try
-                {
-                    if (dbHelper.SaveModifyDeleteData(saveSql, sqlParametersList))
-                    {
-                        MessageBox.Show("Success");
-                        this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
-                        //this._log.Append(DateTime.Now.ToString("HH:mm:ss") + " " + "Save data successfully!" + "\r\n");
-                        //this.txtLog.Text = this._log.ToString();
-                    }
-                    else
-                    {
-                        MessageBox.Show("fail");
-                    }
-
-                }
-                catch
-                {
-
-                    MessageBox.Show("fail");
-                }
+                this._cSVFileHelper.CsvContentDataTable.Rows[selectRowIndex]["State"] = CSVFileHelper._state.notDuplicate;
+                this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
             }
 
-            sqlParametersList.Clear();
+            if (this.dgvDataTable.Rows.Count == 0)
+            {
+                this.btnSaveFile.Enabled = true;
+            }
+
         }
 
         /// <summary>
@@ -346,6 +327,18 @@ namespace ReadAndSaveFile
         {
             int btnSaveIndex = 0;
             int btnOverwriteIndex = 0;
+
+            if (e.RowIndex != -1 && e.ColumnIndex != -1 && e.ColumnIndex != btnOverwriteIndex && e.ColumnIndex != btnSaveIndex)
+            {
+                if ((bool)this.dgvDataTable.Rows[e.RowIndex].Cells[0].EditedFormattedValue == true)
+                {
+                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = false;
+                }
+                else
+                {
+                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = true;
+                }
+            }
 
             for (int i = 0; i < dgvDataTable.Columns.Count; i++)
             {
@@ -359,17 +352,7 @@ namespace ReadAndSaveFile
                 }
             }
 
-            if (e.RowIndex != -1 && e.ColumnIndex != -1 && e.ColumnIndex != btnOverwriteIndex && e.ColumnIndex != btnSaveIndex)
-            {
-                if ((bool)this.dgvDataTable.Rows[e.RowIndex].Cells[0].EditedFormattedValue == true)
-                {
-                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = false;
-                }
-                else
-                {
-                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = true;
-                }
-            }
+
         }
 
         /// <summary>
@@ -423,81 +406,22 @@ namespace ReadAndSaveFile
         /// <param name="e"></param>
         private void btnBatchsSaving_Click(object sender, EventArgs e)
         {
-            string saveSql = "EXEC sp_AddStudentAdmissionInfoDetial  @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
-            List<SqlParameter> sqlParametersList = new List<SqlParameter>();
-            DbHelper dbHelper = new DbHelper(this._connStr);
-            dbHelper.OpenDbConnection();
-            SqlCommand sqlCommand = new SqlCommand(saveSql, dbHelper.SqlCon);
-            SqlTransaction sqlTransaction = dbHelper.SqlCon.BeginTransaction();
-            bool result = false;
-
-
             //Check that rows are selected
             if (this.CheckIsSelectedRow())
             {
-                try
-
+                for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
                 {
-                    for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
+                    if ((bool)this.dgvDataTable.Rows[i].Cells[0].Value == true)
                     {
-                        if ((bool)this.dgvDataTable.Rows[i].Cells[0].Value == false)
-                        {
-
-                            sqlParametersList.Add(new SqlParameter("@Name", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Name"]));
-                            sqlParametersList.Add(new SqlParameter("@Age", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Age"]));
-                            sqlParametersList.Add(new SqlParameter("@Sex", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Sex"]));
-                            sqlParametersList.Add(new SqlParameter("@Email", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Email"]));
-                            //Save Data
-                            result = this.SaveModifyDeleteData(saveSql, sqlParametersList, sqlTransaction, sqlCommand);
-
-                            if (result == false)
-                            {
-                                //Data rollback
-                                sqlTransaction.Rollback();
-                                break;
-                            }
-
-                            sqlCommand.Parameters.Clear();
-                            sqlParametersList.Clear();
-                        }
+                        this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["state"] = CSVFileHelper._state.notDuplicate;
+                        this.dgvDataTable.Rows.RemoveAt(i);
+                        i--;
                     }
-
-                    if (result)
-                    {
-                        //Data Commit
-                        sqlTransaction.Commit();
-
-                        for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
-                        {
-                            if (dgvDataTable.Rows[i].Cells[0].Value.Equals(true))
-                            {
-                                //Example Delete the saved data
-                                dgvDataTable.Rows.Remove(dgvDataTable.Rows[i]);
-                                i--;
-                            }
-                        }
-
-                        this._log.Append(DateTime.Now.ToString("HH:mm:ss") + "" + "save data successfully" + "\r\n");
-                        this.txtLog.Text = this._log.ToString();
-
-                        if (this.dgvDataTable.Rows.Count == 0)
-                        {
-                            this.btnSaveFile.Enabled = true;
-                        }
-                    }
-                }
-                catch
-                {
-                    throw;
-                }
-                finally
-                {
-                    dbHelper.CloseDbConnection();
                 }
             }
-            else
+            if (this.dgvDataTable.Rows.Count == 0)
             {
-                MessageBox.Show("No rows are selected");
+                this.btnSaveFile.Enabled = true;
             }
         }
 
@@ -508,81 +432,25 @@ namespace ReadAndSaveFile
         /// <param name="e"></param>
         private void btnBatchOverwrite_Click(object sender, EventArgs e)
         {
-            List<SqlParameter> sqlParametersList = new List<SqlParameter>();
-            string overwriteSql = "EXEC sp_OverwriteStudentAdmissionInfoSnumber @Name = @Name, @Age = @Age, @Sex = @Sex, @Email= @Email";
-            DbHelper dbHelper = new DbHelper(this._connStr);
-            dbHelper.OpenDbConnection();
-            SqlCommand sqlCommand = new SqlCommand(overwriteSql, dbHelper.SqlCon);
-            SqlTransaction sqlTransaction = dbHelper.SqlCon.BeginTransaction();
-            bool result = false;
-
+            //Check that rows are selected
             if (this.CheckIsSelectedRow())
             {
-                try
-
+                for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
                 {
-                    for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
+                    if ((bool)this.dgvDataTable.Rows[i].Cells[0].Value == true)
                     {
-
-
-                        if ((bool)this.dgvDataTable.Rows[i].Cells[0].Value == false)
-                        {
-                            sqlParametersList.Add(new SqlParameter("@Name", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Name"]));
-                            sqlParametersList.Add(new SqlParameter("@Age", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Age"]));
-                            sqlParametersList.Add(new SqlParameter("@Sex", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Sex"]));
-                            sqlParametersList.Add(new SqlParameter("@Email", this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["Email"]));
-                            //Overwrite Data
-                            result = this.SaveModifyDeleteData(overwriteSql, sqlParametersList, sqlTransaction, sqlCommand);
-
-                            if (result == false)
-                            {
-                                //Data rollback
-                                sqlTransaction.Rollback();
-                                break;
-                            }
-
-                            sqlCommand.Parameters.Clear();
-                            sqlParametersList.Clear();
-                        }
+                        this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i]["state"] = CSVFileHelper._state.overwrite;
+                        this.dgvDataTable.Rows.RemoveAt(i);
+                        i--;
                     }
-
-                    if (result)
-                    {  //Data commit
-                        sqlTransaction.Commit();
-                        for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
-                        {
-                            if (dgvDataTable.Rows[i].Cells[0].Value.Equals(true))
-                            {
-                                dgvDataTable.Rows.Remove(dgvDataTable.Rows[i]);
-                                i--;
-                            }
-                        }
-
-                        this._log.Append(DateTime.Now.ToString("HH:mm:ss") + "" + "Overwrite data successfully" + "\r\n");
-                        this.txtLog.Text = this._log.ToString();
-
-                        if (this.dgvDataTable.Rows.Count == 0)
-                        {
-                            this.btnSaveFile.Enabled = true;
-                        }
-                    }
-
-                }
-                catch
-                {
-                    throw;
-                }
-                finally
-                {
-                    dbHelper.CloseDbConnection();
                 }
             }
-            else
+
+            if (this.dgvDataTable.Rows.Count == 0)
             {
-                MessageBox.Show("No rows are selected");
+                this.btnSaveFile.Enabled = true;
             }
         }
-
 
         #region private method
         /// <summary>
@@ -616,10 +484,9 @@ namespace ReadAndSaveFile
         /// <summary>
         /// Check that the row is selected
         /// </summary>
-        /// <returns></returns>
+        /// <returns>If a row is selected ,it returns true; otherwise, it returns fasle</returns>
         private bool CheckIsSelectedRow()
         {
-
             for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
             {
                 if (this.dgvDataTable.Rows[i].Cells[0].Value != null)
@@ -634,35 +501,11 @@ namespace ReadAndSaveFile
         }
 
         /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="sql"></param>
-        /// <param name="sqlParameterList"></param>
-        /// <param name="sqlTransaction"></param>
-        /// <param name="sqlCommand"></param>
-        /// <returns></returns>
-        private bool SaveModifyDeleteData(string sql, List<SqlParameter> sqlParameterList, SqlTransaction sqlTransaction, SqlCommand sqlCommand)
-        {
-            sqlCommand.Transaction = sqlTransaction;
-            sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
-            try
-            {
-                return sqlCommand.ExecuteNonQuery() > 0;
-            }
-            catch
-            {
-                throw;
-            }
-        }
-
-        /// <summary>
         /// Display cells and logs that do not conform to the rules
         /// </summary>
         private void displayErrorCellAndLog()
         {
             ErrorCellInformation errorCellInformation = new ErrorCellInformation();
-
-            //Change the cell background color to a different color by enumerating different values
             for (int i = 0; i < this._cSVFileHelper.ErrorCellInformationList.Count; i++)
             {
                 switch (this._cSVFileHelper.ErrorCellInformationList[i].ErrorType)
@@ -690,13 +533,148 @@ namespace ReadAndSaveFile
                 this._log.Append(this._cSVFileHelper.ErrorCellInformationList[i].ErrorMessage.ToString() + "\r\n");
                 this.txtLog.Text = this._log.ToString();
             }
-
-            //this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
-            //Output the specific cell information of the specific row that does not conform to the rule
             this.txtLog.Text = this._log.ToString();
             this._cSVFileHelper.DestroyErrorCellInformation();
         }
-    }
 
-    #endregion
+        ///
+        private bool SaveUpdateDeleteBulkData(string sql, DataTable dataTable, bool isStartTransaction)
+        {
+
+            List<SqlParameter> sqlParametersList = new List<SqlParameter>();
+            DbHelper dbHelper = new DbHelper(this._connStr);
+            dbHelper.OpenDbConnection();
+            SqlCommand sqlCommand = null;
+            SqlTransaction sqlTransaction = null;
+            bool result = false;
+
+            if (dataTable.Rows.Count == 0)
+            {
+                return false;
+            }
+            //If you start a transaction
+            if (isStartTransaction)
+            {
+                sqlCommand = new SqlCommand(sql, dbHelper.SqlCon);
+                sqlTransaction = dbHelper.SqlCon.BeginTransaction();
+                sqlCommand.Transaction = sqlTransaction;
+                try
+                {
+                    for (int i = 0; i < dataTable.Rows.Count; i++)
+                    {
+                        sqlParametersList.Add(new SqlParameter("@Name", dataTable.Rows[i]["Name"]));
+                        sqlParametersList.Add(new SqlParameter("@Age", dataTable.Rows[i]["Age"]));
+                        sqlParametersList.Add(new SqlParameter("@Sex", dataTable.Rows[i]["Sex"]));
+                        sqlParametersList.Add(new SqlParameter("@Email", dataTable.Rows[i]["Email"]));
+                        //Save Data
+                        result = dbHelper.SaveModifyDeleteData(sql, sqlParametersList, sqlTransaction, sqlCommand);
+
+                        if (result == false)
+                        {
+                            //Data rollback
+                            sqlTransaction.Rollback();
+                            return false;
+                        }
+
+                        sqlParametersList.Clear();
+                    }
+                    //Data Commit
+                    sqlTransaction.Commit();
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+                return true;
+            }
+            else
+            {
+                for (int i = 0; i < dataTable.Rows.Count; i++)
+                {
+                    sqlParametersList.Add(new SqlParameter("@Name", dataTable.Rows[i]["Name"]));
+                    sqlParametersList.Add(new SqlParameter("@Age", dataTable.Rows[i]["Age"]));
+                    sqlParametersList.Add(new SqlParameter("@Sex", dataTable.Rows[i]["Sex"]));
+                    sqlParametersList.Add(new SqlParameter("@Email", dataTable.Rows[i]["Email"]));
+                    //Save Data
+                    result = dbHelper.SaveModifyDeleteData(sql, sqlParametersList);
+
+                    if (result == false)
+                    {
+                        return false;
+                    }
+
+                    sqlParametersList.Clear();
+                }
+
+                return true;
+            }
+        }
+
+        private bool UpdateDupicateAndSaveNotDuplicateData(string updateSql, string saveSql, DataTable dupicateDataTable, DataTable notDuplicateDataTable)
+        {
+            List<SqlParameter> sqlParametersList = new List<SqlParameter>();
+            DbHelper dbHelper = new DbHelper(this._connStr);
+            dbHelper.OpenDbConnection();
+            SqlCommand sqlCommand = new SqlCommand(updateSql, dbHelper.SqlCon);
+            SqlTransaction sqlTransaction = dbHelper.SqlCon.BeginTransaction();
+            sqlCommand.Transaction = sqlTransaction;
+            bool result = false;
+
+            try
+            {
+                for (int i = 0; i < dupicateDataTable.Rows.Count; i++)
+                {
+                    sqlParametersList.Add(new SqlParameter("@Name", dupicateDataTable.Rows[i]["Name"]));
+                    sqlParametersList.Add(new SqlParameter("@Age", dupicateDataTable.Rows[i]["Age"]));
+                    sqlParametersList.Add(new SqlParameter("@Sex", dupicateDataTable.Rows[i]["Sex"]));
+                    sqlParametersList.Add(new SqlParameter("@Email", dupicateDataTable.Rows[i]["Email"]));
+                    //Save Data
+                    result = dbHelper.SaveModifyDeleteData(updateSql, sqlParametersList, sqlTransaction, sqlCommand);
+
+                    if (result == false)
+                    {
+                        //Data rollback
+                        sqlTransaction.Rollback();
+                        return false;
+                    }
+
+                    sqlParametersList.Clear();
+                }
+                if (notDuplicateDataTable != null)
+                {
+                    for (int i = 0; i < notDuplicateDataTable.Rows.Count; i++)
+                    {
+                        sqlParametersList.Add(new SqlParameter("@Name", notDuplicateDataTable.Rows[i]["Name"]));
+                        sqlParametersList.Add(new SqlParameter("@Age", notDuplicateDataTable.Rows[i]["Age"]));
+                        sqlParametersList.Add(new SqlParameter("@Sex", notDuplicateDataTable.Rows[i]["Sex"]));
+                        sqlParametersList.Add(new SqlParameter("@Email", notDuplicateDataTable.Rows[i]["Email"]));
+                        //Save Data
+                        result = dbHelper.SaveModifyDeleteData(saveSql, sqlParametersList, sqlTransaction, sqlCommand);
+
+                        if (result == false)
+                        {
+                            //Data rollback
+                            sqlTransaction.Rollback();
+                            return false;
+                        }
+
+                        sqlParametersList.Clear();
+                    }
+
+                }
+                sqlTransaction.Commit();
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                dbHelper.CloseDbConnection();
+            }
+
+            return true;
+        }
+        #endregion
+    }
 }

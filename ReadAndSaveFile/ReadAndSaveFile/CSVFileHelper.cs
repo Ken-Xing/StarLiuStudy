@@ -6,6 +6,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -18,8 +19,14 @@ namespace ReadAndSaveCSVFile
         private DataTable _duplicateDataTable = null;
         private DataTable _notDuplicateDataTable = null;
         private DataTable _possibleDuplicateDataTable = null;
-
         List<ErrorCellInformation> _errorCellInformationList = new List<ErrorCellInformation>();
+        public enum _state
+        {
+            duplicate = 0,
+            undetermined = 1,
+            notDuplicate = 2,
+            overwrite=3
+        }
         #endregion
 
 
@@ -175,9 +182,10 @@ namespace ReadAndSaveCSVFile
             List<string> columnAllContent = new List<string>();
             List<string> duplicateContentList = new List<string>();
             int columnIndex = 0;
-            int time = 0;
+            int times = 0;
             bool isFirst = true;
             int FirstMatch = 0;
+
 
             for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
             {
@@ -204,20 +212,21 @@ namespace ReadAndSaveCSVFile
                 }
 
                 //Get the location of the duplicate content
-                for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
+
+                for (int j = 0; j < duplicateContentList.Count; j++)
                 {
-                    for (int j = 0; j < duplicateContentList.Count; j++)
+                    for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
                     {
                         if (this._csvContentDataTable.Rows[i]["Email"].Equals(duplicateContentList[j].ToString()))
                         {
 
-                            if (time != j)
+                            if (times != j)
                             {
-                                time = j;
+                                times = j;
                                 isFirst = true;
                             }
 
-                            if (time == j)
+                            if (times == j)
                             {
                                 //Gets the position of the first matched element
                                 if (isFirst)
@@ -234,9 +243,8 @@ namespace ReadAndSaveCSVFile
                         }
                     }
                 }
+                return false;
             }
-
-            return false;
         }
 
         /// <summary>
@@ -244,20 +252,19 @@ namespace ReadAndSaveCSVFile
         /// </summary>
         /// <param name="this._csvContentDataTable">The contents of a file</param>
         /// <param name="findDuplicateDataSql">Sql command statement</param>
-        public void SiftFileContents(string findDuplicateDataSql,string finsPossibleDuplicateDataSql, string connStr)
+        public void SiftedFileContents(string findDuplicateDataSql, string findPossibleDuplicateDataSql, string connStr)
         {
-            List<SqlParameter> sqlParameterList = new List<SqlParameter>();
-            DbBase.DbHelper dbhelper = new DbBase.DbHelper(connStr);
-            List<string> list = new List<string>();
-            //The structure of the clone table
-
-            this._duplicateDataTable = this._csvContentDataTable.Clone();
-            this._possibleDuplicateDataTable = this._csvContentDataTable.Clone();
-
+            List<SqlParameter> findDuplicatesqlParameter = new List<SqlParameter>();
+            DbHelper dbhelper = new DbHelper(connStr);
+            List<SqlParameter> findPossibleDuplicateSqlParameter = new List<SqlParameter>();
+            this._csvContentDataTable.Columns.Add(new DataColumn("State", typeof(_state)));
             StringBuilder stringBuilder = new StringBuilder();
             int columnIndex = 0;
+            this._notDuplicateDataTable = this._csvContentDataTable.Clone();
+            this._possibleDuplicateDataTable = this._csvContentDataTable.Clone();
+            this._duplicateDataTable = this._csvContentDataTable.Clone();
 
-
+            //Get the index of the email column
             for (int i = 0; i < this._csvContentDataTable.Columns.Count; i++)
             {
                 if (this._csvContentDataTable.Columns[i].ColumnName.Equals("Email"))
@@ -265,89 +272,49 @@ namespace ReadAndSaveCSVFile
                     columnIndex = i;
                 }
             }
-            //The loop gets repeated datat
-            for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
-            {
-                sqlParameterList.Add(new SqlParameter("@Email", this._csvContentDataTable.Rows[i]["Email"]));
-                //Results are obtained for whether the data is duplicated
-                if (dbhelper.CheckDataIsExists(findDuplicateDataSql, sqlParameterList))
-                {
-                    this._duplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
-                }
-                else
-                {
-                    this._possibleDuplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
-                }
 
-                sqlParameterList.Clear();
-            }
-
-            if (this._possibleDuplicateDataTable.Rows.Count > 0)
-            {
-                
-                this._notDuplicateDataTable = this._possibleDuplicateDataTable.Clone();
-
-                for (int i = 0; i < this._possibleDuplicateDataTable.Rows.Count; i++)
-                {
-                    sqlParameterList.Add(new SqlParameter("@Name", this._possibleDuplicateDataTable.Rows[i]["Name"]));
-                    sqlParameterList.Add(new SqlParameter("@Age", this._possibleDuplicateDataTable.Rows[i]["Age"]));
-                    sqlParameterList.Add(new SqlParameter("@Sex", this._possibleDuplicateDataTable.Rows[i]["Sex"]));
-
-                    if (!dbhelper.CheckDataIsExists(finsPossibleDuplicateDataSql,sqlParameterList))
-                    {
-                        this._notDuplicateDataTable.Rows.Add(this._possibleDuplicateDataTable.Rows[i].ItemArray);
-                        this._possibleDuplicateDataTable.Rows.Remove(this._possibleDuplicateDataTable.Rows[i]);
-                        i--;
-                    }
-                    sqlParameterList.Clear();
-                }
-            }
-        }
-        public bool SaveAndUpdateData(string connStr, string sql, DataTable duplicateDataTable, DataTable notDuplicateTable, string targetTable)
-        {
-            bool result = false;
-            DbHelper dbHelper = new DbHelper(connStr);
-            dbHelper.OpenDbConnection();
-            SqlTransaction sqlTransaction = dbHelper.SqlCon.BeginTransaction();
-            List<SqlParameter> sqlParmeter = null;
+            dbhelper.OpenDbConnection();
 
             try
             {
-                //Save data
-                dbHelper.SaveBulkNotDuplicateData(notDuplicateTable, targetTable);
-
-                for (int i = 0; i < duplicateDataTable.Rows.Count; i++)
+                for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
                 {
-                    sqlParmeter = new List<SqlParameter>
+                    findDuplicatesqlParameter.Add(new SqlParameter("@Name", this._csvContentDataTable.Rows[i]["Name"]));
+                    findDuplicatesqlParameter.Add(new SqlParameter("@Age", this._csvContentDataTable.Rows[i]["Age"]));
+                    findDuplicatesqlParameter.Add(new SqlParameter("@Sex", this._csvContentDataTable.Rows[i]["Sex"]));
+                    findDuplicatesqlParameter.Add(new SqlParameter("@Email", this._csvContentDataTable.Rows[i]["Email"]));
+                   
+                    //Mark each row of data
+                    if (dbhelper.CheckDataIsExists(findDuplicateDataSql, findDuplicatesqlParameter))
                     {
-                      new SqlParameter("@Name", duplicateDataTable.Rows[i]["Name"]),
-                      new SqlParameter("@Age", duplicateDataTable.Rows[i]["Age"]),
-                      new SqlParameter("@Snumber", duplicateDataTable.Rows[i]["Snumber"]),
-
-
-                    };
-
-                    //Update data
-                    result = dbHelper.SaveModifyDeleteData(sql, sqlParmeter);
-                    sqlParmeter.Clear();
-
-                    if (result == false)
-                    {
-                        throw new Exception();
+                        this._csvContentDataTable.Rows[i]["state"] = _state.duplicate;
+                        this._duplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
                     }
+                    else if (dbhelper.CheckDataIsExists(findPossibleDuplicateDataSql, findDuplicatesqlParameter))
+                    {
+                        this._csvContentDataTable.Rows[i]["state"] = _state.undetermined;
+                        this._possibleDuplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
+                    }
+                    else
+                    {
+                        this._csvContentDataTable.Rows[i]["state"] = _state.notDuplicate;
+                        this._notDuplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
+                    }
+                    //Clear Paramete
+                    findDuplicatesqlParameter.Clear();
+                    findPossibleDuplicateSqlParameter.Clear();
                 }
-
-                //Commit the transaction
-                sqlTransaction.Commit();
             }
             catch
             {
-                //Rollback the transaction
-                sqlTransaction.Rollback();
                 throw;
             }
+            finally
+            {
+                //Close database connection
+                dbhelper.CloseDbConnection();
+            }
 
-            return true;
         }
 
         /// <summary>
@@ -363,9 +330,7 @@ namespace ReadAndSaveCSVFile
             errorCellInformation.ErrorRow = errorRow;
             errorCellInformation.ErrorMessage = errorMessage;
             errorCellInformation.ErrorType = errorTypeNumber;
-
             this._errorCellInformationList.Add(errorCellInformation);
-
             errorCellInformation.CompareTo(errorCellInformation);
 
         }
