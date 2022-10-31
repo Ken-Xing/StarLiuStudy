@@ -53,6 +53,9 @@ namespace ReadAndSaveFile
         private void btnReadFile_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
+            this.dgvDataTable.Columns.Clear();
+            this.UpdateButtonVisibleState(false);
+            this.btnNext.Visible = false;
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -151,6 +154,8 @@ namespace ReadAndSaveFile
 
                                 this.UpdateButtonVisibleState(true);
                                 this.btnSaveFile.Enabled = false;
+                                this.btnNext.Visible=true;
+                                this.btnNext.Enabled=false;
                             }
                             else
                             {
@@ -164,8 +169,7 @@ namespace ReadAndSaveFile
                                         if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql, updateDataSql))
                                         {
                                             this._filePath = string.Empty;
-                                            this._cSVFileHelper.DestroyCSVContentDataTable();
-                                            this.dgvDataTable.DataSource = null;
+                                            this._cSVFileHelper.DestroyCSVContentDataTable();        
                                             this.btnSaveFile.Enabled = false;
                                             this.btnRefresh.Enabled = false;
                                             this.txtLog.Text = string.Empty;
@@ -186,7 +190,6 @@ namespace ReadAndSaveFile
                                             {
                                                 this._filePath = string.Empty;
                                                 this._cSVFileHelper.DestroyCSVContentDataTable();
-                                                this.dgvDataTable.DataSource = null;
                                                 this.btnSaveFile.Enabled = false;
                                                 this.btnRefresh.Enabled = false;
                                                 this.txtLog.Text = string.Empty;
@@ -214,7 +217,6 @@ namespace ReadAndSaveFile
                                             {
                                                 this._filePath = string.Empty;
                                                 this._cSVFileHelper.DestroyCSVContentDataTable();
-                                                this.dgvDataTable.DataSource = null;
                                                 this.btnSaveFile.Enabled = false;
                                                 this.btnRefresh.Enabled = false;
                                                 this.txtLog.Text = string.Empty;
@@ -278,7 +280,9 @@ namespace ReadAndSaveFile
             this.dgvDataTable.DataSource=null;
             this.dgvDataTable.Columns.Clear();
             this.btnSaveFile.Enabled = true;
-            this.txtLog.Text= string.Empty; 
+            this.txtLog.Text = string.Empty; 
+            this.btnNext.Visible = false;
+            this.UpdateButtonVisibleState(false);
 
             if (this._filePath != string.Empty)
             {
@@ -328,8 +332,8 @@ namespace ReadAndSaveFile
 
             if (this.dgvDataTable.Rows.Count == 0)
             {
-                this.btnNext.Visible = true;
-                this.dgvDataTable.Rows.Clear();
+                this.btnNext.Enabled = true;
+                this.dgvDataTable.Columns.Clear();
                 this.UpdateButtonVisibleState(false);
             }
         }
@@ -357,7 +361,6 @@ namespace ReadAndSaveFile
                     {
                         this._filePath = string.Empty;
                         this._cSVFileHelper.DestroyCSVContentDataTable();
-                        this.dgvDataTable.DataSource = null;
                         this.btnNext.Visible = false;
                         this.btnSaveFile.Enabled = false;
                         this.btnRefresh.Enabled = false;
@@ -380,7 +383,6 @@ namespace ReadAndSaveFile
                         {
                             this._filePath = string.Empty;
                             this._cSVFileHelper.DestroyCSVContentDataTable();
-                            this.dgvDataTable.DataSource = null;
                             this.btnNext.Visible = false;
                             this.btnSaveFile.Enabled = false;
                             this.btnRefresh.Enabled = false;
@@ -409,7 +411,6 @@ namespace ReadAndSaveFile
                         {
                             this._filePath = string.Empty;
                             this._cSVFileHelper.DestroyCSVContentDataTable();
-                            this.dgvDataTable.DataSource = null;
                             this.btnNext.Visible = false;
                             this.btnSaveFile.Enabled = false;
                             this.btnRefresh.Enabled = false;
@@ -538,9 +539,13 @@ namespace ReadAndSaveFile
                     }
                 }
             }
+            else
+            {
+                MessageBox.Show("Please select the row to save");
+            }
             if (this.dgvDataTable.Rows.Count == 0)
             {
-                this.btnNext.Visible = true;
+                this.btnNext.Enabled = true;
                 this.dgvDataTable.Columns.Clear();
                 this.UpdateButtonVisibleState(false);
             }
@@ -567,10 +572,14 @@ namespace ReadAndSaveFile
                     }
                 }
             }
+            else
+            {
+                MessageBox.Show("Please select the row to overwrite");
+            }
 
             if (this.dgvDataTable.Rows.Count == 0)
             {
-                this.btnNext.Visible = true;
+                this.btnNext.Enabled = true;
                 this.dgvDataTable.Columns.Clear();
                 this.UpdateButtonVisibleState(false);
             }

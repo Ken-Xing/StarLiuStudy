@@ -543,7 +543,15 @@ namespace ReadAndSaveCSVFile
                                 }
                             }
 
-                            throw new ReadAndSaveFileException(String.Format("A column name that does not match the specified column name {0}", notMatchColumns.ToString()));
+                            if (notMatchColumnsList.Count>1)
+                            {
+                                throw new ReadAndSaveFileException(string.Format("The column names {0} do not match the specified column name", notMatchColumns.ToString()));
+                            }
+                            else
+                            {
+                                throw new ReadAndSaveFileException(string.Format("A column name that does not match the specified column name {0}", notMatchColumns.ToString()));
+                            }
+
                         }
                     }
                     else
