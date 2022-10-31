@@ -28,6 +28,9 @@ namespace DbBase
             }
         }
 
+        /// <summary>
+        /// Read-only this._sqlCon
+        /// </summary>
         public SqlConnection SqlCon
         {
             get
@@ -97,7 +100,7 @@ namespace DbBase
             sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
 
             try
-            {
+            {   // Return true or false
                 return sqlCommand.ExecuteNonQuery() > 0;
             }
             catch
@@ -120,12 +123,14 @@ namespace DbBase
         /// <returns></returns>
         public bool SaveModifyDeleteData(string sql, List<SqlParameter> sqlParameterList, SqlTransaction sqlTransaction, SqlCommand sqlCommand)
         {
+    
             sqlCommand.CommandText = sql;
             sqlCommand.Transaction = sqlTransaction;
             sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
 
             try
             {
+                // Return true or false
                 return sqlCommand.ExecuteNonQuery() > 0;
             }
             catch
@@ -195,7 +200,6 @@ namespace DbBase
         /// <returns>Returns true if the data is present and false otherwise</returns>
         public bool CheckDataIsExists(string sql, List<SqlParameter> sqlParameterList)
         {
-
             SqlCommand sqlCommand = new SqlCommand(sql, this._sqlCon);
             sqlCommand.Parameters.AddRange(sqlParameterList.ToArray());
 

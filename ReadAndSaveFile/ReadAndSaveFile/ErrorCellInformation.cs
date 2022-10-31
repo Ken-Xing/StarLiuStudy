@@ -27,26 +27,72 @@ namespace ReadAndSaveFile
         private _errorTypeEnum _errorType = 0;
         #endregion
 
-
-        public int ErrorColumn { get => _errorColumn; set => _errorColumn = value; }
-        public int ErrorRow { get => _errorRow; set => _errorRow = value; }
-        public string ErrorMessage { get => _errorMessage; set => _errorMessage = value; }
-        public _errorTypeEnum ErrorType { get => _errorType; set => _errorType = value; }
-
-        public ErrorCellInformation()
+        /// <summary>
+        /// Initialize this._errorColumn
+        /// </summary>
+        public int ErrorColumn
         {
-
+            get
+            {
+                return this._errorColumn;
+            }
+            set
+            {
+                this._errorColumn = value;
+            }
         }
 
         /// <summary>
-        /// 
+        /// Initialize this._errorRo
         /// </summary>
-        /// <param name="obj"></param>
-        /// <returns></returns>
-        public int CompareTo(ErrorCellInformation errorCell)
+        public int ErrorRow
         {
-            ErrorCellInformation errorCellInformation = errorCell as ErrorCellInformation;
-            return this.ErrorRow.CompareTo(errorCellInformation.ErrorRow);
+            get
+            {
+                return this._errorRow;
+            }
+            set
+            {
+                this._errorRow = value;
+            }
+        }
+
+        /// <summary>
+        /// Initialize this._errorMessage
+        /// </summary>
+        public string ErrorMessage
+        {
+            get
+            {
+                return this._errorMessage;
+            }
+            set
+            {
+                this._errorMessage = value;
+            }
+        }
+
+        /// <summary>
+        /// Initialize this._errorType
+        /// </summary>
+        public _errorTypeEnum ErrorType
+        {
+            get
+            {
+                return this._errorType;
+            }
+            set
+            {
+                this._errorType = value;
+            }
+        }
+
+        /// <summary>
+        /// a no-argument constructor for ErrorCellInformation
+        /// </summary>
+        public ErrorCellInformation()
+        {
+
         }
     }
 }
