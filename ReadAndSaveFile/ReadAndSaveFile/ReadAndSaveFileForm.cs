@@ -15,6 +15,8 @@ namespace ReadAndSaveFile
         private string _filePath = string.Empty;
         private string _connStr = string.Empty;
         private CSVFileHelper _cSVFileHelper = new CSVFileHelper();
+        private bool _isCheckPass = true;
+
         #endregion
 
         public ReadAndSaveFileForm()
@@ -25,8 +27,9 @@ namespace ReadAndSaveFile
         private void ReadAndSaveFileForm_Load(object sender, EventArgs e)
         {
             //Disable the savefile button when the form is loaded
-            this.btnSaveFile.Enabled = false;
+            this.btnNext.Enabled  = false;
             this.btnRefresh.Enabled = false;
+            this.btnSaveFile.Enabled = false;
             this.txtEmptyContent.Text = "EmptyContent";
             this.txtDuplicateContent.Text = "DuplicateContent";
             this.txtDuplicateDbContent.Text = "DuplicateDatabaseContent";
@@ -42,7 +45,7 @@ namespace ReadAndSaveFile
             this.txtErrorContent.BackColor = Color.LightSteelBlue;
             this.UpdateInputVisibleState(false);
             this.UpdateButtonVisibleState(false);
-            this.btnNext.Visible = false;
+
         }
 
         /// <summary>
@@ -53,10 +56,18 @@ namespace ReadAndSaveFile
         private void btnReadFile_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
-            this.dgvDataTable.Columns.Clear();
+            this.UpdateInputVisibleState(false);
             this.UpdateButtonVisibleState(false);
-            this.btnNext.Visible = false;
+            this._cSVFileHelper.ClearErrorCellInformationList();
+            this.txtLog.Text = string.Empty;
+            this._cSVFileHelper.ErrorLog.Clear();
 
+            if (this.dgvDataTable.Columns.Contains("Select"))
+            {
+                this.dgvDataTable.Columns.Clear();
+            }
+
+            //Determine whether the OK button is clicked
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 //Get file Path
@@ -66,11 +77,7 @@ namespace ReadAndSaveFile
                 {
                     try
                     {
-                        //Get file content
-                        this._cSVFileHelper.GetFileDataToDataTable(this._filePath);
-                        //Display csv file datatable
-                        this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable.Copy();
-
+                        this.ReadFileContentAndDispaly();
                     }
                     catch (ReadAndSaveFileException ex)
                     {
@@ -82,10 +89,12 @@ namespace ReadAndSaveFile
                     MessageBox.Show("Please select the extension '.csv' file.");
                 }
             }
+
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
                 this.btnSaveFile.Enabled = true;
                 this.btnRefresh.Enabled = true;
+                this.btnNext.Enabled = false;
             }
         }
 
@@ -96,80 +105,111 @@ namespace ReadAndSaveFile
         /// <param name="e">Record additional information for clicking btnSaveFile</param>
         private void btnSaveFile_Click(object sender, EventArgs e)
         {
-            this._connStr = "Server = 192.168.0.236,1433; Initial Catalog = ITLTest;user Id = EKSDBUser; Password = qwe123!@#;";
+            //Connection string
+            this._connStr = "Server = 192.168.0.236,1433; Initial Catalog = ITLTest;user Id = EKSDBUser; Password = qwe123!@#";
+            //Sql commandtext
             string findDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
             string findPossibleDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoDetailIsMatch @Name = @Name, @Age = @Age, @Sex = @Sex";
             string updateDataSql = "EXEC sp_UpdateStudentAdmissionInfoByEmail @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
             string saveSql = "EXEC sp_AddStudentAdmissionInfoDetial  @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
             string overwriteSql = "EXEC  sp_OverwriteStudentAdmissionInfoEmail @Name = @Name, @Age = @Age, @Sex = @Sex, @Email = @Email";
-            int nameMaxLength = 64;
-            int emailMaxLength = 64;
+            //int nameMaxLength = 64;
+            //int emailMaxLength = 64;
             DataGridViewButtonColumn btnOverwrite = new DataGridViewButtonColumn();
             DataGridViewButtonColumn btnSave = new DataGridViewButtonColumn();
             DataGridViewCheckBoxColumn chkSelect = new DataGridViewCheckBoxColumn();
+            btnOverwrite.Name = "Overwrite";
+            btnSave.Name = "Save";
+            chkSelect.DataPropertyName = "isChecked";
             chkSelect.Name = "Select";
             chkSelect.TrueValue = true;
             chkSelect.FalseValue = false;
-            chkSelect.DataPropertyName = "isChecked";
-            chkSelect.Resizable = DataGridViewTriState.False;
-            btnOverwrite.Name = "Overwrite";
-            btnSave.Name = "Save";
+            chkSelect.Resizable = DataGridViewTriState.True;
             btnSave.DefaultCellStyle.NullValue = "Save";
             btnOverwrite.DefaultCellStyle.NullValue = "Overwrite";
             chkSelect.DefaultCellStyle.NullValue = "Select";
 
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
-                //Get the file content data
-                try
+                //Determine whether the check passes
+                if (this._isCheckPass)
                 {
-                    //Determines if it matches the structure of the data table in the database
-                    if (this._cSVFileHelper.CheckIsMatch(nameMaxLength, emailMaxLength))
+                    try
                     {
-                        //Check if the file contains duplicate content
-                        if (this._cSVFileHelper.CheckCSVDataIsDuplicated())
+                        this._cSVFileHelper.SiftedFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
+                        if (this._cSVFileHelper.PossibleDuplicateDataTable.Rows.Count > 0)
                         {
-                            //Get duplicate and non-duplicate data
-                            this._cSVFileHelper.SiftedFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
-                            if (this._cSVFileHelper.PossibleDuplicateDataTable.Rows.Count > 0)
+                            MessageBox.Show("If suspected duplicate data is found, please deal with suspected duplicate data!");
+                            this.dgvDataTable.DataSource = this._cSVFileHelper.PossibleDuplicateDataTable.Copy();
+                            this.UpdateInputVisibleState(false);
+                            this.dgvDataTable.Columns.Add(btnSave);
+                            this.dgvDataTable.Columns.Add(btnOverwrite);
+                            this.txtLog.Text = string.Empty;
+
+                            //Add checkbox and buttons
+                            if (this.dgvDataTable.Rows.Count > 0)
                             {
-                                MessageBox.Show("If suspected duplicate data is found, please deal with suspected duplicate data!");
-                                this.dgvDataTable.DataSource = this._cSVFileHelper.PossibleDuplicateDataTable.Copy();
-                                this.UpdateInputVisibleState(false);
-                                this.dgvDataTable.Columns.Add(btnSave);
-                                this.dgvDataTable.Columns.Add(btnOverwrite);
-                                this.txtLog.Text = string.Empty;
-
-                                //Add checkbox and buttons
-                                if (this.dgvDataTable.Rows.Count > 0)
-                                {
-                                    //Insert the checkbox in the first column
-                                    this.dgvDataTable.Columns.Insert(0, chkSelect);
-                                }
-
-                                for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
-                                {
-                                    this.dgvDataTable.Rows[i].Cells[0].Value = false;
-                                }
-
-                                this.UpdateButtonVisibleState(true);
-                                this.btnSaveFile.Enabled = false;
-                                this.btnNext.Visible=true;
-                                this.btnNext.Enabled=false;
+                                //Insert the checkbox in the first column
+                                this.dgvDataTable.Columns.Insert(0, chkSelect);
                             }
-                            else
+
+                            for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
                             {
-                                if (this._cSVFileHelper.DuplicateDataTable.Rows.Count > 0)
+                                this.dgvDataTable.Rows[i].Cells[0].Value = false;
+                            }
+                            //Add a row number to the column header
+                            for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
+                            {
+                                this.dgvDataTable.Rows[i].HeaderCell.Value = (i + 1).ToString();
+                            }
+                            //Disallow sorting
+                            for (int i = 0; i < this.dgvDataTable.Columns.Count; i++)
+                            {
+                                this.dgvDataTable.Columns[i].SortMode = DataGridViewColumnSortMode.NotSortable;
+                            }
+
+                            this.UpdateButtonVisibleState(true);
+                            this.btnSaveFile.Enabled = false;
+                            this.btnNext.Visible = true;
+                            this.btnNext.Enabled = false;
+                        }
+                        else
+                        {
+                            if (this._cSVFileHelper.DuplicateDataTable.Rows.Count > 0)
+                            {
+                                DialogResult dialogResult = MessageBox.Show("The data in the file and the data in the database are duplicated.Do you override duplicate data?", "File content duplication prompts", MessageBoxButtons.YesNo);
+                                //Duplicate data is overwritten if it exists
+                                if (dialogResult.Equals(DialogResult.Yes))
                                 {
-                                    DialogResult dialogResult = MessageBox.Show("The data in the file and the data in the database are duplicated.Do you override duplicate data?", "File content duplication prompts", MessageBoxButtons.YesNo);
-                                    //Duplicate data is overwritten if it exists
-                                    if (dialogResult.Equals(DialogResult.Yes))
+                                    //save not duplicate data and update duplicate data
+                                    if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql, updateDataSql))
                                     {
-                                        //Insert non-duplicate data and update duplicate data
-                                        if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql, updateDataSql))
+                                        this.UpdateInputVisibleState(false);
+                                        this._filePath = string.Empty;
+                                        this._cSVFileHelper.DestroyCSVContentDataTable();
+                                        this.btnSaveFile.Enabled = false;
+                                        this.btnRefresh.Enabled = false;
+                                        this.txtLog.Text = string.Empty;
+                                        this.dgvDataTable.DataSource = null;
+
+                                        MessageBox.Show("Success");
+                                    }
+                                    else
+                                    {
+                                        MessageBox.Show("Fail");
+                                    }
+                                }
+                                //Insert data that is not duplicated
+                                else
+                                {
+                                    if (this._cSVFileHelper.NotDuplicateDataTable != null)
+                                    {
+                                        //Save and ovwewrite data
+                                        if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql))
                                         {
                                             this._filePath = string.Empty;
-                                            this._cSVFileHelper.DestroyCSVContentDataTable();        
+                                            this._cSVFileHelper.DestroyCSVContentDataTable();
+                                            this.UpdateInputVisibleState(false);
                                             this.btnSaveFile.Enabled = false;
                                             this.btnRefresh.Enabled = false;
                                             this.txtLog.Text = string.Empty;
@@ -180,88 +220,59 @@ namespace ReadAndSaveFile
                                             MessageBox.Show("Fail");
                                         }
                                     }
-                                    //Insert data that is not duplicated
-                                    else
-                                    {
-                                        if (this._cSVFileHelper.NotDuplicateDataTable != null)
-                                        {
-                                            //save file content data to database
-                                            if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql))
-                                            {
-                                                this._filePath = string.Empty;
-                                                this._cSVFileHelper.DestroyCSVContentDataTable();
-                                                this.btnSaveFile.Enabled = false;
-                                                this.btnRefresh.Enabled = false;
-                                                this.txtLog.Text = string.Empty;
-                                                MessageBox.Show("Success");
-                                            }
-                                            else
-                                            {
-                                                MessageBox.Show("Fail");
-                                            }
-                                        }
-                                        else
-                                        {
-                                            MessageBox.Show("There is no data that does not duplicate the database content");
-                                        }
-                                    }
-                                }
-                                //Save the contents of data that is not duplicated
-                                else
-                                {
-                                    if (this._cSVFileHelper.NotDuplicateDataTable != null)
-                                    {
-                                        try
-                                        {
-                                            if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql))
-                                            {
-                                                this._filePath = string.Empty;
-                                                this._cSVFileHelper.DestroyCSVContentDataTable();
-                                                this.btnSaveFile.Enabled = false;
-                                                this.btnRefresh.Enabled = false;
-                                                this.txtLog.Text = string.Empty;
-                                                MessageBox.Show("Success");
-                                            }
-                                            else
-                                            {
-                                                MessageBox.Show("Fail");
-                                            }
-                                        }
-                                        catch
-                                        {
-                                            throw;
-                                        }
-                                    }
                                     else
                                     {
                                         MessageBox.Show("There is no data that does not duplicate the database content");
                                     }
                                 }
                             }
-                        }
-                        else
-                        {
-                            MessageBox.Show("Please deal with duplicate data in the file");
-                            this.btnSaveFile.Enabled = false;
-                            this.UpdateInputVisibleState(true);
-                            this.displayErrorCellAndLog();
+                            //Save the contents of data that is not duplicated
+                            else
+                            {
+                                if (this._cSVFileHelper.NotDuplicateDataTable != null)
+                                {
+                                    try
+                                    {
+                                        //Save and ovwewrite data
+                                        if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql))
+                                        {
+                                            this._filePath = string.Empty;
+                                            this._cSVFileHelper.DestroyCSVContentDataTable();
+                                            this.btnSaveFile.Enabled = false;
+                                            this.btnRefresh.Enabled = false;
+                                            this.txtLog.Text = string.Empty;
+                                            MessageBox.Show("Success");
+                                        }
+                                        else
+                                        {
+                                            MessageBox.Show("Fail");
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        throw;
+                                    }
+                                }
+                                else
+                                {
+                                    MessageBox.Show("Before saving the contents of the file to the database, dispose of the non-conforming entries");
+                                }
+                            }
                         }
                     }
-                    else
+                    //Catch custom exceptions
+                    catch (ReadAndSaveFileException ex)
                     {
-                        this.displayErrorCellAndLog();
-                        this.UpdateInputVisibleState(true);
-                        MessageBox.Show("The file content does not conform to the rules.  See the error log output window for details");
+                        MessageBox.Show(ex.ExceptionMessage.ToString());
+                    }
+                    catch
+                    {
+                        throw;
                     }
                 }
-                //Catch custom exceptions
-                catch (ReadAndSaveFileException ex)
+                else
                 {
-                    MessageBox.Show(ex.ExceptionMessage.ToString());
-                }
-                catch
-                {
-                    throw;
+                    MessageBox.Show("Please deal with the content that does not conform to the rules");
                 }
             }
             else
@@ -277,30 +288,25 @@ namespace ReadAndSaveFile
         /// <param name="e">Record additional information for clicking btnRefresh</param>
         private void btnRefresh_Click(object sender, EventArgs e)
         {
-            this.dgvDataTable.DataSource=null;
+            this.dgvDataTable.DataSource = null;
             this.dgvDataTable.Columns.Clear();
             this.btnSaveFile.Enabled = true;
-            this.txtLog.Text = string.Empty; 
-            this.btnNext.Visible = false;
+            this._cSVFileHelper.ErrorLog.Clear();
+            this.txtLog.Text = string.Empty;
+            this.btnNext.Enabled = false;
             this.UpdateButtonVisibleState(false);
+            this._cSVFileHelper.ErrorLog.Append("Refresh succeeded!" + "\r\n");
 
-            if (this._filePath != string.Empty)
+            //Re read file contents
+            if (this._filePath != string.Empty && Path.GetExtension(this._filePath) == ".csv")
             {
                 try
                 {
-                    //Get file content
-                    this._cSVFileHelper.GetFileDataToDataTable(this._filePath);
-                    //Display csv file datatable
-                    this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable;
-                    MessageBox.Show("Refresh the success");
+                    this.ReadFileContentAndDispaly();
                 }
                 catch (ReadAndSaveFileException ex)
                 {
                     MessageBox.Show(ex.ExceptionMessage.ToString());
-                }
-                catch
-                {
-                    MessageBox.Show("Refresh the fail");
                 }
             }
         }
@@ -316,25 +322,30 @@ namespace ReadAndSaveFile
         {
             int selectRowIndex = this.dgvDataTable.SelectedCells[0].RowIndex;
             //Overwrite Possible duplicate data
-            if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Overwrite"))
+            if (e.RowIndex != -1 && e.ColumnIndex != -1)
             {
-                this._cSVFileHelper.OverwriteDataTable.Rows.Add(this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex].ItemArray);
-                this._cSVFileHelper.PossibleDuplicateDataTable.Rows.RemoveAt(selectRowIndex);
-                this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
-            }
-            //Save as new data
-            else if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Save"))
-            {
-                this._cSVFileHelper.NotDuplicateDataTable.Rows.Add(this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex].ItemArray);
-                this._cSVFileHelper.PossibleDuplicateDataTable.Rows.RemoveAt(selectRowIndex);
-                this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
-            }
+                if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Overwrite"))
+                {
+                    this._cSVFileHelper.OverwriteDataTable.Rows.Add(this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex].ItemArray);
+                    //this._stringBuilderLog.Append(string.Format("The {0} line is marked as rewritten", selectRowIndex)+"\r\n");
+                    this._cSVFileHelper.PossibleDuplicateDataTable.Rows.RemoveAt(selectRowIndex);
+                    this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
+                }
+                //Save as new data
+                else if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Save"))
+                {
+                    this._cSVFileHelper.NotDuplicateDataTable.Rows.Add(this._cSVFileHelper.PossibleDuplicateDataTable.Rows[selectRowIndex].ItemArray);
+                    //this._stringBuilderLog.Append(string.Format("The {0} line is marked as rewritten", selectRowIndex)+"\r\n");
+                    this._cSVFileHelper.PossibleDuplicateDataTable.Rows.RemoveAt(selectRowIndex);
+                    this.dgvDataTable.Rows.RemoveAt(selectRowIndex);
+                }
 
-            if (this.dgvDataTable.Rows.Count == 0)
-            {
-                this.btnNext.Enabled = true;
-                this.dgvDataTable.Columns.Clear();
-                this.UpdateButtonVisibleState(false);
+                if (this.dgvDataTable.Rows.Count == 0)
+                {
+                    this.btnNext.Enabled = true;
+                    this.dgvDataTable.Columns.Clear();
+                    this.UpdateButtonVisibleState(false);
+                }
             }
         }
 
@@ -356,7 +367,7 @@ namespace ReadAndSaveFile
                 //Duplicate data is overwritten if it exists
                 if (dialogResult.Equals(DialogResult.Yes))
                 {
-                    //Insert non-duplicate data and update duplicate data
+                    //Save not duplicate data and update duplicate data
                     if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql, updateDataSql))
                     {
                         this._filePath = string.Empty;
@@ -378,7 +389,7 @@ namespace ReadAndSaveFile
                 {
                     if (this._cSVFileHelper.NotDuplicateDataTable != null)
                     {
-                        //save file content data to database
+                        //Save and overwrite data
                         if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql))
                         {
                             this._filePath = string.Empty;
@@ -407,6 +418,7 @@ namespace ReadAndSaveFile
                 {
                     try
                     {
+                        //Save and overwritedata
                         if (this.UpdateDupicateAndSaveNotDuplicateData(saveSql, overwriteSql))
                         {
                             this._filePath = string.Empty;
@@ -442,36 +454,30 @@ namespace ReadAndSaveFile
         /// <param name="e">Record additional information for the clicked cell</param>
         private void dgvDataTable_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            int btnSaveIndex = 0;
-            int btnOverwriteIndex = 0;
             int checkboxIndex = 0;
 
-
-            for (int i = 0; i < dgvDataTable.Columns.Count; i++)
+            //Check box exists
+            if (this.dgvDataTable.Columns.Contains("Select"))
             {
-                if (this.dgvDataTable.Columns[i].Name.Equals("Save"))
+                for (int i = 0; i < dgvDataTable.Columns.Count; i++)
                 {
-                    btnSaveIndex = i;
+                    if (this.dgvDataTable.Columns[i].Name.Equals("Select"))
+                    {
+                        checkboxIndex = i;
+                    }
                 }
-                else if (this.dgvDataTable.Columns[i].Name.Equals("Overwrite"))
+                //It takes effect only when the check box is clicked
+                if (e.RowIndex != -1 && e.ColumnIndex != -1 && e.ColumnIndex == 0)
                 {
-                    btnOverwriteIndex = i;
-                }
-                else if (this.dgvDataTable.Columns[i].Name.Equals("Select"))
-                {
-                    checkboxIndex = i;
-                }
-            }
-
-            if ((e.ColumnIndex == btnOverwriteIndex || e.ColumnIndex==btnSaveIndex || e.ColumnIndex==checkboxIndex) && e.ColumnIndex != -1 && e.RowIndex != -1)
-            {
-                if ((bool)this.dgvDataTable.Rows[e.RowIndex].Cells[0].EditedFormattedValue == true)
-                {
-                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = false;
-                }
-                else
-                {
-                    this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = true;
+                    //Changes the value of the checkbox cell if it exists
+                    if ((bool)this.dgvDataTable.Rows[e.RowIndex].Cells[0].EditedFormattedValue == true)
+                    {
+                        this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = false;
+                    }
+                    else
+                    {
+                        this.dgvDataTable.Rows[e.RowIndex].Cells[0].Value = true;
+                    }
                 }
             }
         }
@@ -483,9 +489,10 @@ namespace ReadAndSaveFile
         /// <param name="e">Record additional information that changes cell content</param>
         private void dgvDataTable_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
+            //Triggered when the value of the checkbox is changed
             if (this.dgvDataTable.Columns[e.ColumnIndex].Name.Equals("Select"))
             {
-                if (e.Value == (null))
+                if (e.Value == null)
                 {
                     e.Value = false;
                 }
@@ -501,6 +508,7 @@ namespace ReadAndSaveFile
         {
             for (int i = 0; i < dgvDataTable.Rows.Count; i++)
             {
+                //Don't select all rows
                 this.dgvDataTable.Rows[i].Cells[0].Value = false;
             }
         }
@@ -514,6 +522,7 @@ namespace ReadAndSaveFile
         {
             for (int i = 0; i < dgvDataTable.Rows.Count; i++)
             {
+                //Select all rows
                 this.dgvDataTable.Rows[i].Cells[0].Value = true;
             }
         }
@@ -530,9 +539,11 @@ namespace ReadAndSaveFile
             {
                 for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
                 {
+                    //Determines whether the checkbox is selected
                     if ((bool)this.dgvDataTable.Rows[i].Cells[0].Value == true)
                     {
                         this._cSVFileHelper.NotDuplicateDataTable.Rows.Add(this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i].ItemArray);
+                        //this._stringBuilderLog.Append(string.Format("The {0} line is marked as rewritten", i+1)+"\r\n");
                         this._cSVFileHelper.PossibleDuplicateDataTable.Rows.RemoveAt(i);
                         this.dgvDataTable.Rows.RemoveAt(i);
                         i--;
@@ -543,6 +554,7 @@ namespace ReadAndSaveFile
             {
                 MessageBox.Show("Please select the row to save");
             }
+
             if (this.dgvDataTable.Rows.Count == 0)
             {
                 this.btnNext.Enabled = true;
@@ -563,9 +575,11 @@ namespace ReadAndSaveFile
             {
                 for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
                 {
+                    //Determines whether the checkbox is selected
                     if ((bool)this.dgvDataTable.Rows[i].Cells[0].Value == true)
                     {
                         this._cSVFileHelper.OverwriteDataTable.Rows.Add(this._cSVFileHelper.PossibleDuplicateDataTable.Rows[i].ItemArray);
+                        //this._stringBuilderLog.Append(string.Format("The {0} line is marked as rewritten", i+1)+"\r\n");
                         this._cSVFileHelper.PossibleDuplicateDataTable.Rows.RemoveAt(i);
                         this.dgvDataTable.Rows.RemoveAt(i);
                         i--;
@@ -593,12 +607,26 @@ namespace ReadAndSaveFile
         private void UpdateInputVisibleState(bool visibleState)
         {
 
-            this.txtDuplicateDbContent.Visible = visibleState;
-            this.txtCharacterLengthError.Visible = visibleState;
-            this.txtDuplicateContent.Visible = visibleState;
-            this.txtErrorContent.Visible = visibleState;
-            this.txtFiledTypeError.Visible = visibleState;
-            this.txtEmptyContent.Visible = visibleState;
+            //Hidden controls
+            if (visibleState == false)
+            {
+                this.txtDuplicateDbContent.Hide();
+                this.txtCharacterLengthError.Hide();
+                this.txtDuplicateContent.Hide();
+                this.txtErrorContent.Hide();
+                this.txtFiledTypeError.Hide();
+                this.txtEmptyContent.Hide();
+            }
+            //Show controls
+            else
+            {
+                this.txtDuplicateDbContent.Show();
+                this.txtCharacterLengthError.Show();
+                this.txtDuplicateContent.Show();
+                this.txtErrorContent.Show();
+                this.txtFiledTypeError.Show();
+                this.txtEmptyContent.Show();
+            }
         }
 
         /// <summary>
@@ -607,11 +635,7 @@ namespace ReadAndSaveFile
         /// <param name="visibleState">The state of being visible or not</param>
         private void UpdateButtonVisibleState(bool visibleState)
         {
-            this.btnBatchOverwrite.Visible = visibleState;
-            this.btnBatchsSaving.Visible = visibleState;
-            this.btnNotSelectAll.Visible = visibleState;
-            this.btnSelectAll.Visible = visibleState;
-
+            this.pnlOperatingCell.Visible = visibleState;
         }
 
         /// <summary>
@@ -624,6 +648,7 @@ namespace ReadAndSaveFile
             {
                 if (this.dgvDataTable.Rows[i].Cells[0].Value != null)
                 {
+                    //As long as any row in the table is selected, true is returned
                     if (this.dgvDataTable.Rows[i].Cells[0].Value.Equals(true))
                     {
                         return true;
@@ -646,32 +671,54 @@ namespace ReadAndSaveFile
             {
                 switch (this._cSVFileHelper.ErrorCellInformationList[i].ErrorType)
                 {
+                    //If the cell content is empty
                     case ErrorCellInformation._errorTypeEnum.emptyContent:
                         this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Red;
+                        this.txtEmptyContent.Show();
                         break;
+                    //If the contents of the file are duplicated
                     case ErrorCellInformation._errorTypeEnum.duplicateContent:
                         this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Gray;
+                        this.txtDuplicateContent.Show();
                         break;
+                    //If the cell content duplicates the database content
                     case ErrorCellInformation._errorTypeEnum.duplicateDbContent:
                         this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.LightYellow;
+                        this.txtDuplicateDbContent.Show();
                         break;
+                    //If the data type of the content in the cell is wrong
                     case ErrorCellInformation._errorTypeEnum.filedTypeError:
                         this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Orange;
+                        this.txtFiledTypeError.Show();
                         break;
+                    //If the character length of the cell content is not within the rule
                     case ErrorCellInformation._errorTypeEnum.characterLengthError:
                         this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.LightPink;
+                        this.txtCharacterLengthError.Show();
                         break;
+                    //If the cell content is not the specified content
                     case ErrorCellInformation._errorTypeEnum.contentError:
                         this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.LightSteelBlue;
+                        this.txtErrorContent.Show();
                         break;
                 }
                 //Displays a specific error message for a specific cell
                 stringBuider.Append(this._cSVFileHelper.ErrorCellInformationList[i].ErrorMessage.ToString() + "\r\n");
-                this.txtLog.Text =stringBuider.ToString();
-                this.dgvDataTable.FirstDisplayedScrollingRowIndex=this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
+                this.txtLog.Text = stringBuider.ToString() + this._cSVFileHelper.ErrorLog;
+                this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
             }
 
-            this._cSVFileHelper.DestroyErrorCellInformation();
+            this._cSVFileHelper.ClearErrorCellInformationList();
+        }
+
+        private void displayErorrLog()
+        {
+            //Display log
+            if (this._cSVFileHelper.ErrorLog.ToString() != string.Empty)
+            {
+                this.txtLog.Text += this._cSVFileHelper.ErrorLog.ToString();
+            }
+
         }
 
         /// <summary>
@@ -684,15 +731,18 @@ namespace ReadAndSaveFile
         {
             List<SqlParameter> sqlParametersList = new List<SqlParameter>();
             DbHelper dbHelper = new DbHelper(this._connStr);
+            //Open connection
             dbHelper.OpenDbConnection();
             SqlCommand sqlCommand = new SqlCommand(saveSql, dbHelper.SqlCon);
+            //Open transaction
             SqlTransaction sqlTransaction = dbHelper.SqlCon.BeginTransaction();
             sqlCommand.Transaction = sqlTransaction;
             bool result = false;
 
             try
             {
-                if (this._cSVFileHelper.NotDuplicateDataTable.Rows.Count>0)
+                //Save not duplicate data
+                if (this._cSVFileHelper.NotDuplicateDataTable.Rows.Count > 0)
                 {
                     for (int i = 0; i < this._cSVFileHelper.NotDuplicateDataTable.Rows.Count; i++)
                     {
@@ -712,9 +762,8 @@ namespace ReadAndSaveFile
 
                         sqlParametersList.Clear();
                     }
-
                 }
-
+                //Overwrite Data
                 if (this._cSVFileHelper.OverwriteDataTable.Rows.Count > 0)
                 {
                     for (int i = 0; i < this._cSVFileHelper.OverwriteDataTable.Rows.Count; i++)
@@ -763,15 +812,18 @@ namespace ReadAndSaveFile
         {
             List<SqlParameter> sqlParametersList = new List<SqlParameter>();
             DbHelper dbHelper = new DbHelper(this._connStr);
+            //Open connection
             dbHelper.OpenDbConnection();
             SqlCommand sqlCommand = new SqlCommand(saveSql, dbHelper.SqlCon);
+            //Open transaction
             SqlTransaction sqlTransaction = dbHelper.SqlCon.BeginTransaction();
             sqlCommand.Transaction = sqlTransaction;
             bool result = false;
 
             try
             {
-                if (this._cSVFileHelper.NotDuplicateDataTable.Rows.Count>0)
+                //Save not duplicate data
+                if (this._cSVFileHelper.NotDuplicateDataTable.Rows.Count > 0)
                 {
                     for (int i = 0; i < this._cSVFileHelper.NotDuplicateDataTable.Rows.Count; i++)
                     {
@@ -793,7 +845,7 @@ namespace ReadAndSaveFile
                     }
 
                 }
-
+                //Overwrite data
                 if (this._cSVFileHelper.OverwriteDataTable.Rows.Count > 0)
                 {
                     for (int i = 0; i < this._cSVFileHelper.OverwriteDataTable.Rows.Count; i++)
@@ -815,7 +867,7 @@ namespace ReadAndSaveFile
                         sqlParametersList.Clear();
                     }
                 }
-
+                //Update duplicate data
                 for (int i = 0; i < this._cSVFileHelper.DuplicateDataTable.Rows.Count; i++)
                 {
                     sqlParametersList.Add(new SqlParameter("@Name", this._cSVFileHelper.DuplicateDataTable.Rows[i]["Name"]));
@@ -849,6 +901,44 @@ namespace ReadAndSaveFile
 
             return true;
         }
+
+        /// <summary>
+        /// Read and display the contents of the file
+        /// </summary>
+        private void ReadFileContentAndDispaly()
+        {
+            DataGridViewTextBoxColumn columnLineNumber = new DataGridViewTextBoxColumn();
+            columnLineNumber.Name = "LineNumber";
+            columnLineNumber.HeaderText = string.Empty;
+            columnLineNumber.DataPropertyName = "LineNumber";
+            columnLineNumber.Width=50;
+            //connection string
+            this._connStr = "Server = 192.168.0.236,1433; Initial Catalog = ITLTest;user Id = EKSDBUser; Password = qwe123!@#";
+            //Sql commandtext
+            string findDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
+            string findPossibleDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoDetailIsMatch @Name = @Name, @Age = @Age, @Sex = @Sex";
+
+            //Get file content          
+            this._isCheckPass = this._cSVFileHelper.GetFileDataToDataTableAndCheckDataTable(this._filePath, findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
+
+            //Display csv file datatable
+            this.dgvDataTable.DataSource = this._cSVFileHelper.CsvContentDataTable.Copy();
+            //Display error messages
+            this.displayErorrLog();
+            this.displayErrorCellAndLog();
+            //Add a row number to the column head
+            for (int i = 0; i < this.dgvDataTable.Rows.Count; i++)
+            {
+                this.dgvDataTable.Rows[i].HeaderCell.Value = (i + 1).ToString();
+            }
+            //Sort not allowed
+            for (int i = 0; i < this.dgvDataTable.Columns.Count; i++)
+            {
+                this.dgvDataTable.Columns[i].SortMode = DataGridViewColumnSortMode.NotSortable;
+            }
+        }
+
+
         #endregion
     }
 }
