@@ -1,4 +1,7 @@
 ﻿
+using System;
+using System.Collections;
+
 namespace ReadAndSaveFile
 {
     public class ErrorCellInformation

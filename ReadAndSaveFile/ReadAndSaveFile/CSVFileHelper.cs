@@ -35,7 +35,7 @@ namespace ReadAndSaveCSVFile
         }
 
         /// <summary>
-        /// Initialize this._notDuplicateDataTable object
+        /// Initialize this._notDuplicateDataTable
         /// </summary>
         public DataTable NotDuplicateDataTable
         {
@@ -51,7 +51,7 @@ namespace ReadAndSaveCSVFile
         }
 
         /// <summary>
-        /// Initialize this._possibleDuplicateDataTable object
+        /// Initialize this._possibleDuplicateDataTable
         /// </summary>
         public DataTable PossibleDuplicateDataTable
         {
@@ -62,26 +62,22 @@ namespace ReadAndSaveCSVFile
             set
             {
                 this._notDuplicateDataTable = value;
-
             }
         }
 
         /// <summary>
-        /// Initialize this._overwriteDataTable object
+        /// Initialize this._overwriteDataTable
         /// </summary>
         public DataTable OverwriteDataTable
         {
             get
             {
                 return this._overwriteDataTable;
-
             }
             set
             {
                 this._overwriteDataTable = value;
-
             }
-
         }
 
         /// <summary>
@@ -96,7 +92,7 @@ namespace ReadAndSaveCSVFile
         }
 
         /// <summary>
-        /// Read-only this._errorCellInformationList
+        /// Initialize this._errorCellInformationList
         /// </summary>
         public List<ErrorCellInformation> ErrorCellInformationList
         {
@@ -104,8 +100,15 @@ namespace ReadAndSaveCSVFile
             {
                 return this._errorCellInformationList;
             }
+            set
+            {
+                this._errorCellInformationList = value;
+            }
         }
 
+        /// <summary>
+        /// Read-only this._errorlog
+        /// </summary>
         public StringBuilder ErrorLog
         {
             get
@@ -115,10 +118,30 @@ namespace ReadAndSaveCSVFile
         }
 
         /// <summary>
-        /// Gets the contents of the file and converts them to a DataTable
+        /// Destroying member this._cSvContentDataTable
+        /// </summary>
+        public void DestroyCSVContentDataTable()
+        {
+            this._csvContentDataTable = null;
+        }
+
+        /// <summary>
+        /// clear member this._errorCellInformationList
+        /// </summary>
+        public void ClearErrorCellInformationList()
+        {
+            this._errorCellInformationList.Clear();
+        }
+
+        /// <summary>
+        /// Check the contents of a file when it is read
         /// </summary>
         /// <param name="filePath">The path to the file</param>
-        /// <returns>datatable is returned when the file's data is retrieved successfully</returns>
+        /// <param name="findDuplicateDataSql">Find duplicate data sql command text</param>
+        /// <param name="findPossibleDuplicateDataSql">Find possible duplicate data sql command text</param>
+        /// <param name="connStr">Connection string</param>
+        /// <returns>Returns true if the check passed, false otherwise</returns>
+        /// <exception cref="ReadAndSaveFileException"></exception>
         public bool GetFileDataToDataTableAndCheckDataTable(string filepath, string findDuplicateDataSql, string findPossibleDuplicateDataSql, string connStr)
         {
             bool isCheckPass = true;
@@ -173,12 +196,13 @@ namespace ReadAndSaveCSVFile
                         }
                     }
                 }
-
             }
+            //This exception is thrown when a file is occupied
             catch (IOException)
             {
                 throw new ReadAndSaveFileException("The file is occupied by another program");
             }
+            //This exception is thrown when duplicate columns appear in a file
             catch (DuplicateNameException)
             {
                 throw new ReadAndSaveFileException("Duplicate column names are not allowed");
@@ -195,10 +219,10 @@ namespace ReadAndSaveCSVFile
                 }
 
             }
-
+            //Check that the file content matches the data table structure
             if (this.CheckIsMatch(nameMaxLength, emailMaxLength))
             {
-                if (this.CheckCSVDataIsDuplicated())
+                if (this.CheckDataIsDuplicated())
                 {
                     this.SiftedFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, connStr);
                 }
@@ -209,92 +233,80 @@ namespace ReadAndSaveCSVFile
             }
             else
             {
+                this.CheckDataIsDuplicated();
                 isCheckPass = false;
             }
 
+            //Returns true if the check passed, false otherwise
             return isCheckPass;
         }
 
-        /// <summary>
-        /// Destroying member this._cSvContentDataTable
-        /// </summary>
-        public void DestroyCSVContentDataTable()
-        {
-            this._csvContentDataTable = null;
-        }
-
-        /// <summary>
-        /// clear member this._errorCellInformationList
-        /// </summary>
-        public void ClearErrorCellInformationList()
-        {
-            this._errorCellInformationList.Clear();
-        }
-
+        #region private method
         /// <summary>
         /// Check if the contents of the file are duplicated
         /// </summary>
-        /// <param name="dataTable">The contents of a file</param>
-        /// <returns>Returns true if the contents of the file are repeated and false if they are not</returns>
-        public bool CheckCSVDataIsDuplicated()
+        /// <returns>Returns false if the contents of the file are repeated and true if they are not</returns>
+        private bool CheckDataIsDuplicated()
         {
             List<string> columnAllContent = new List<string>();
             List<string> duplicateContentList = new List<string>();
             int columnIndex = 0;
             int times = 0;
-            bool isFirst = true;
-            int FirstMatch = 0;
+            bool isFirstMatch = true;
+            int firstMatchIndex = 0;
 
-            for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
+            if (this._csvContentDataTable.Columns.Contains("Email"))
             {
-                columnAllContent.Add(this._csvContentDataTable.Rows[i]["Email"].ToString());
-            }
-
-            //Determine if the content is duplicate
-            if (columnAllContent.Distinct().Count() == columnAllContent.Count)
-            {
-                return true;
-            }
-            else
-            {
-                //Get duplicates in the same column
-                duplicateContentList = columnAllContent.GroupBy(x => x).Where(x => x.Count() > 1).Select(x => x.Key).ToList();
-
-                //Gets the position of the duplicate column in the datatable
-                for (int i = 0; i < this._csvContentDataTable.Columns.Count; i++)
+                for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
                 {
-                    if (this._csvContentDataTable.Columns[i].ColumnName.Equals("Email"))
-                    {
-                        columnIndex = i;
-                    }
+                    columnAllContent.Add(this._csvContentDataTable.Rows[i]["Email"].ToString());
                 }
 
-                //Get the location of the duplicate content
-                for (int j = 0; j < duplicateContentList.Count; j++)
+                //Determine if the content is duplicate
+                if (columnAllContent.Distinct().Count() == columnAllContent.Count)
                 {
-                    for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
+                    return true;
+                }
+                else
+                {
+                    //Get duplicates in the same column
+                    duplicateContentList = columnAllContent.GroupBy(x => x).Where(x => x.Count() > 1).Select(x => x.Key).ToList();
+
+                    //Gets the position of the duplicate column in the datatable
+                    for (int i = 0; i < this._csvContentDataTable.Columns.Count; i++)
                     {
-                        if (this._csvContentDataTable.Rows[i]["Email"].Equals(duplicateContentList[j].ToString()))
+                        if (this._csvContentDataTable.Columns[i].ColumnName.Equals("Email"))
                         {
+                            columnIndex = i;
+                        }
+                    }
 
-                            if (times != j)
+                    //Get the location of the duplicate content
+                    for (int j = 0; j < duplicateContentList.Count; j++)
+                    {
+                        for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
+                        {
+                            if (this._csvContentDataTable.Rows[i]["Email"].Equals(duplicateContentList[j].ToString()))
                             {
-                                times = j;
-                                isFirst = true;
-                            }
-
-                            if (times == j)
-                            {
-                                //Gets the position of the first matched element
-                                if (isFirst)
+                                if (times != j)
                                 {
-                                    FirstMatch = i;
-                                    isFirst = false;
+                                    times = j;
+                                    isFirstMatch = true;
                                 }
-                                //Not the first match
-                                else
+
+                                if (times == j)
                                 {
-                                    this.AddErrorCellInformation(columnIndex, i, ErrorCellInformation._errorTypeEnum.duplicateContent, string.Format("The {0} row of the Email column repeats the {1} row", i + 1, FirstMatch + 1));
+                                    //Gets the position of the first matched element
+                                    if (isFirstMatch)
+                                    {
+                                        firstMatchIndex = i;
+                                        isFirstMatch = false;
+                                    }
+                                    //Not the first match
+                                    else
+                                    {
+                                        this.AddErrorCellInformation(columnIndex, i, ErrorCellInformation._errorTypeEnum.duplicateContent, string.Format("The {0} row of the Email column repeats the {1} row", i + 1, firstMatchIndex + 1));
+                                    }
                                 }
                             }
                         }
@@ -303,19 +315,23 @@ namespace ReadAndSaveCSVFile
 
                 return false;
             }
+            else
+            {
+                return false;
+            }
         }
 
         /// <summary>
-        /// Gets the Duplicate and not Duplicate Data
+        /// Filter the contents of the file
         /// </summary>
-        /// <param name="this._csvContentDataTable">The contents of a file</param>
-        /// <param name="findDuplicateDataSql">Sql command statement</param>
-        public void SiftedFileContents(string findDuplicateDataSql, string findPossibleDuplicateDataSql, string connStr)
+        /// <param name="findDuplicateDataSql">Find duplicate data sql command text</param>
+        /// <param name="findPossibleDuplicateDataSql">Find possible duplicate data sql command text</param>
+        /// <param name="connStr">Connection string</param>
+        private void SiftedFileContents(string findDuplicateDataSql, string findPossibleDuplicateDataSql, string connStr)
         {
+            List<SqlParameter> findPossibleDuplicateSqlParameter = new List<SqlParameter>();
             List<SqlParameter> findDuplicatesqlParameter = new List<SqlParameter>();
             DbHelper dbhelper = new DbHelper(connStr);
-            List<SqlParameter> findPossibleDuplicateSqlParameter = new List<SqlParameter>();
-            StringBuilder stringBuilder = new StringBuilder();
             int columnIndex = 0;
             this._notDuplicateDataTable = this._csvContentDataTable.Clone();
             this._possibleDuplicateDataTable = this._csvContentDataTable.Clone();
@@ -334,6 +350,7 @@ namespace ReadAndSaveCSVFile
 
             try
             {
+                //Mark each row of data
                 for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
                 {
                     findDuplicatesqlParameter.Add(new SqlParameter("@Name", this._csvContentDataTable.Rows[i]["Name"]));
@@ -341,16 +358,18 @@ namespace ReadAndSaveCSVFile
                     findDuplicatesqlParameter.Add(new SqlParameter("@Sex", this._csvContentDataTable.Rows[i]["Sex"]));
                     findDuplicatesqlParameter.Add(new SqlParameter("@Email", this._csvContentDataTable.Rows[i]["Email"]));
 
-                    //Mark each row of data
+                    //Get duplicate data
                     if (dbhelper.CheckDataIsExists(findDuplicateDataSql, findDuplicatesqlParameter))
                     {
                         this._duplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
                         this.AddErrorCellInformation(columnIndex, i, ErrorCellInformation._errorTypeEnum.duplicateDbContent, string.Format("The {0} row of column Email duplicates the database content", i + 1));
                     }
+                    //Get possible duplicate data
                     else if (dbhelper.CheckDataIsExists(findPossibleDuplicateDataSql, findDuplicatesqlParameter))
                     {
                         this._possibleDuplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
                     }
+                    //Get not duplicate data
                     else
                     {
                         this._notDuplicateDataTable.Rows.Add(this._csvContentDataTable.Rows[i].ItemArray);
@@ -369,7 +388,6 @@ namespace ReadAndSaveCSVFile
                 //Close database connection
                 dbhelper.CloseDbConnection();
             }
-
         }
 
         /// <summary>
@@ -386,6 +404,7 @@ namespace ReadAndSaveCSVFile
             errorCellInformation.ErrorRow = errorRow;
             errorCellInformation.ErrorMessage = errorMessage;
             errorCellInformation.ErrorType = errorTypeNumber;
+            //Adds the information to the List
             this._errorCellInformationList.Add(errorCellInformation);
         }
 
@@ -395,25 +414,17 @@ namespace ReadAndSaveCSVFile
         /// <param name="nameMaxLength">name MaxLength</param>
         /// <param name="emailMaxLength">email MaxLength</param>
         /// <returns>Returns true if the match is successful and false otherwise</returns>
-        /// <exception cref="ReadAndSaveFileException"></exception>
-        public bool CheckIsMatch(int nameMaxLength, int emailMaxLength)
+        private bool CheckIsMatch(int nameMaxLength, int emailMaxLength)
         {
-
             bool result = true;
             //All columns of the csv file
             List<string> fileAllColumn = new List<string>();
-            //The required column names
-            List<string> requireColumn = new List<string>();
             //All column names
             List<string> allColumn = new List<string>();
             allColumn.Add("Name");
             allColumn.Add("Age");
             allColumn.Add("Email");
             allColumn.Add("Sex");
-            requireColumn.Add("Name");
-            requireColumn.Add("Age");
-            requireColumn.Add("Email");
-            requireColumn.Add("Sex");
             Regex emailRegex = new Regex("^([a-z0-9A-Z]+[-|\\.]?)+[a-z0-9A-Z]@([a-z0-9A-Z]+(-[a-z0-9A-Z]+)?\\.)+[a-zA-Z]{2,}$");
             int number = 0;
             string name = string.Empty;
@@ -436,89 +447,108 @@ namespace ReadAndSaveCSVFile
                         if (fileAllColumn.All(file => allColumn.Any(all => all.Trim().Equals(file))))
                         {
                             //Whether required column names are included
-                            if (!requireColumn.Except(fileAllColumn).Any())
+                            if (!allColumn.Except(fileAllColumn).Any())
                             {
                                 //Judge whether the required contents comply with the rules
                                 for (int i = 0; i < this._csvContentDataTable.Rows.Count; i++)
                                 {
+                                    ////Determines if the content is empty
                                     if ((this._csvContentDataTable.Rows[i]["Email"].ToString().Length > 0 && this._csvContentDataTable.Rows[i]["Email"].ToString().Trim() == string.Empty) || this._csvContentDataTable.Rows[i]["Email"].ToString() == string.Empty)
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Email"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.emptyContent, string.Format("The {0} row of the email column cannot be empty", i + 1));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.emptyContent, string.Format("The {0} row of the email column cannot be empty.", i + 1));
                                                 result = false;
                                             }
                                         }
                                     }
+                                    //Determines whether the length of the string conforms to the rule
                                     else if (this._csvContentDataTable.Rows[i]["Email"].ToString().Length > emailMaxLength)
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
-                                            if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Eamil"))
+                                            if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Email"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.characterLengthError, string.Format("The {0} Row of the email column must be longer than {1} characters", i + 1, emailMaxLength));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.characterLengthError, string.Format("The {0} Row of the email column must be longer than {1} characters.", i + 1, emailMaxLength));
                                                 result = false;
                                             }
                                         }
                                     }
+                                    //Determine if the email format conforms to the rules
                                     else if (!emailRegex.IsMatch(this._csvContentDataTable.Rows[i]["Email"].ToString()))
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Email"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.contentError, string.Format("The content in the {0} row of the email column does not conform to the email rules", i + 1));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.contentError, string.Format("The content in the {0} row of the email column does not conform to the email rules.", i + 1));
                                                 result = false;
                                             }
                                         }
                                     }
-
-                                    if ((this._csvContentDataTable.Rows[i]["Name"].ToString().Length > 0 && this._csvContentDataTable.Rows[i]["Name"].ToString().Trim() == string.Empty) || this._csvContentDataTable.Rows[i]["Name"].ToString() == string.Empty)
+                                    //Determines if the content is empty
+                                    if ((this._csvContentDataTable.Rows[i]["Name"].ToString().Length > 0 && (this._csvContentDataTable.Rows[i]["Name"].ToString().Trim() == string.Empty) || this._csvContentDataTable.Rows[i]["Name"].ToString() == string.Empty))
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Name"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.emptyContent, string.Format("The {0} row of the Name column cannot be empty", i + 1));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.emptyContent, string.Format("The {0} row of the Name column cannot be empty.", i + 1));
                                                 result = false;
                                             }
                                         }
                                     }
+                                    //Determines whether the length of the string conforms to the rule
                                     else if (this._csvContentDataTable.Rows[i]["Name"].ToString().Length > nameMaxLength)
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Name"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.characterLengthError, string.Format("The {0} rows of the Name column must be longer than {2} characters", i + 1, nameMaxLength));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.characterLengthError, string.Format("The {0} rows of the Name column must be longer than {1} characters.", i + 1, nameMaxLength));
                                                 result = false;
                                             }
                                         }
                                     }
+
                                     try
                                     {
                                         number = Convert.ToInt32(this._csvContentDataTable.Rows[i]["Age"]);
+                                        //Judge whether the value is within the range
+                                        if (number < 0 || number > 100)
+                                        {
+                                            for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
+                                            {
+                                                if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Age"))
+                                                {
+                                                    this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.contentError, string.Format("The {0} row in column a must be greater than 0 and less than 100.", i + 1));
+                                                    result = false;
+                                                }
+                                            }
+                                        }
                                     }
+                                    //The exception is raised when the value is null
                                     catch (InvalidCastException)
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Age"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.filedTypeError, string.Format("The {0} row of the Age column cannot be empty", i + 1));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.filedTypeError, string.Format("The {0} row of the Age column cannot be empty.", i + 1));
                                                 result = false;
                                             }
                                         }
                                     }
+                                    //This exception is raised when format conversion fails
                                     catch (FormatException)
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Age"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.filedTypeError, string.Format("The {0} row of column a must be a number", i + 1));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.filedTypeError, string.Format("The {0} row of column a must be a number.", i + 1));
                                                 result = false;
                                             }
                                         }
@@ -531,18 +561,19 @@ namespace ReadAndSaveCSVFile
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Sex"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.emptyContent, string.Format("The {0} row of the sex column cannot be empty", i + 1));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.emptyContent, string.Format("The {0} row of the sex column cannot be empty.", i + 1));
                                                 result = false;
                                             }
                                         }
                                     }
+                                    //Check whether the value is mae or fmale
                                     else if (this._csvContentDataTable.Rows[i]["Sex"].ToString().ToLower() != "female" && this._csvContentDataTable.Rows[i]["Sex"].ToString().ToLower() != "male")
                                     {
                                         for (int j = 0; j < this._csvContentDataTable.Columns.Count; j++)
                                         {
                                             if (this._csvContentDataTable.Columns[j].ColumnName.Equals("Sex"))
                                             {
-                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.contentError, string.Format("The {0} row of the sex column must be either male or female", i + 1));
+                                                this.AddErrorCellInformation(j, i, ErrorCellInformation._errorTypeEnum.contentError, string.Format("The {0} row of the sex column must be either male or female.", i + 1));
                                                 result = false;
                                             }
                                         }
@@ -553,12 +584,14 @@ namespace ReadAndSaveCSVFile
                             }
                             else
                             {
-                                lackColumnList = requireColumn.Where(r => !fileAllColumn.Exists(f => r.Contains(f))).ToList();
-                                StringBuilder stringBuilder1 = new StringBuilder();
+                                //Get missing columns
+                                lackColumnList = allColumn.Where(a => !fileAllColumn.Exists(f => a.Contains(f))).ToList();
+
                                 for (int i = 0; i < lackColumnList.Count; i++)
                                 {
-                                    stringBuilder1.Append(lackColumnList[i].ToString()+"\r\n");
+                                    this._errorlog.Append(string.Format("The necessary {0} column is missing.", lackColumnList[i].ToString())+"\r\n");
                                 }
+
                                 return false;
                             }
                         }
@@ -570,7 +603,7 @@ namespace ReadAndSaveCSVFile
 
                             for (int i = 0; i < notMatchColumnsList.Count; i++)
                             {
-                                this._errorlog.Append(string.Format("A column name that does not match the specified column name {0}", notMatchColumnsList[i].ToString()) + "\r\n");
+                                this._errorlog.Append(string.Format("A column name that does not match the specified column name {0}.", notMatchColumnsList[i].ToString()) + "\r\n");
                             }
 
                             return false;
@@ -588,9 +621,11 @@ namespace ReadAndSaveCSVFile
             }
             else
             {
-                this.ErrorLog.Append("The number of columns in the file cannot be less than three and more than six"+"\r\n");
+                this._errorlog.Append("The number of columns in the file cannot be less than three and more than six."+"\r\n");
+
                 return false;
             }
         }
     }
+    #endregion
 }
