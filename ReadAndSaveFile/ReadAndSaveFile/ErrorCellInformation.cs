@@ -18,9 +18,8 @@ namespace ReadAndSaveFile
             contentError = 5,
         }
         #endregion
-        private int _errorColumn = 0;
-        private int _errorRow = 0;
-        private string _errorMessage = string.Empty;
+        private int _errorColumn = -1;
+        private int _errorRow = -1;
         private _errorTypeEnum _errorType = 0;
         #endregion
 
@@ -51,21 +50,6 @@ namespace ReadAndSaveFile
             set
             {
                 this._errorRow = value;
-            }
-        }
-
-        /// <summary>
-        /// Initialize this._errorMessage
-        /// </summary>
-        public string ErrorMessage
-        {
-            get
-            {
-                return this._errorMessage;
-            }
-            set
-            {
-                this._errorMessage = value;
             }
         }
 
