@@ -29,7 +29,7 @@ namespace ReadAndSaveFile
         {
             //Hide label
             HideAllLabel();
-
+            this.btnValidate.Enabled = false;
             this.btnReload.Enabled = false;
             this.btnSaveFile.Enabled = false;
             this.UpdateInputVisibleState(false);
@@ -43,16 +43,21 @@ namespace ReadAndSaveFile
         {
             this.lblCharacterLengthError.Hide();
             this.lblDataTypeError.Hide();
-            this.lblDuplicateContent.Hide();
+            this.lblPartDuplicate.Hide();
             this.lblErrorContent.Hide();
             this.lblDuplicateDataBaseData.Hide();
             this.lblEmptyContent.Hide();
+            this.lblRowDuplicate.Hide();
+            this.lblPossibleDuplicate.Hide();
             this.lblDuplicateDataBaseDataColor.Hide();
             this.lblCharterLengthErrorColor.Hide();
             this.lblDataTypeErrorColor.Hide();
-            this.lblDuplicateContentColor.Hide();
+            this.lblPartDuplicateColor.Hide();
             this.lblErrorContentColor.Hide();
             this.lblEmptyContentColor.Hide();
+            this.lblRowDuplicateColor.Hide();
+            this.lblPossibleDuplicateColor.Hide();
+
         }
 
         /// <summary>
@@ -103,6 +108,7 @@ namespace ReadAndSaveFile
 
             if (this._cSVFileHelper.CsvContentDataTable != null)
             {
+                this.btnValidate.Enabled = true;
                 this.btnSaveFile.Enabled = true;
                 this.btnReload.Enabled = true;
             }
@@ -635,10 +641,10 @@ namespace ReadAndSaveFile
                         this.lblEmptyContentColor.Show();
                         break;
                     //If the contents of the file are duplicated
-                    case ErrorCellInformation._errorTypeEnum.duplicateContent:
+                    case ErrorCellInformation._errorTypeEnum.partduplicate:
                         this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Gray;
-                        this.lblDuplicateContent.Show();
-                        this.lblDuplicateContentColor.Show();
+                        this.lblPartDuplicate.Show();
+                        this.lblPartDuplicateColor.Show();
                         break;
                     //If the cell content duplicates the database content
                     case ErrorCellInformation._errorTypeEnum.duplicateDbContent:
@@ -664,15 +670,25 @@ namespace ReadAndSaveFile
                         this.lblErrorContent.Show();
                         this.lblErrorContentColor.Show();
                         break;
+                    case ErrorCellInformation._errorTypeEnum.possibleDuplicate:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.Yellow;
+                        this.lblPossibleDuplicate.Show();
+                        this.lblPossibleDuplicateColor.Show();
+                        break;
+                    case ErrorCellInformation._errorTypeEnum.rowDuplicate:
+                        this.dgvDataTable.Rows[this._cSVFileHelper.ErrorCellInformationList[i].ErrorRow].Cells[this._cSVFileHelper.ErrorCellInformationList[i].ErrorColumn].Style.BackColor = Color.MediumSlateBlue;
+                        this.lblRowDuplicate.Show();
+                        this.lblRowDuplicateColor.Show();
+                        break;
                 }
 
                 //Displays a specific error message for a specific cell
-                stringBuider.Append(this._cSVFileHelper.ErrorLog[i].ToString() + "\r\n");
+                //stringBuider.Append(this._cSVFileHelper.ErrorLog[i].ToString() + "\r\n");
                 //this.lstvlog.Text = stringBuider.ToString() + this._cSVFileHelper.ErrorLog;
-                this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
+                //this.dgvDataTable.FirstDisplayedScrollingRowIndex = this._cSVFileHelper.ErrorCellInformationList[0].ErrorRow;
             }
 
-            this._cSVFileHelper.ClearErrorCellInformationList();
+            //this._cSVFileHelper.ClearErrorCellInformationList();
         }
 
 
@@ -899,15 +915,16 @@ namespace ReadAndSaveFile
 
         private void btnValidate_Click(object sender, EventArgs e)
         {
-            string findDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
-            string findPossibleDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoDetailIsMatch @Name = @Name, @Age = @Age, @Sex = @Sex";
+            //string findDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoEmailIsExists @Email = @Email";
+            //string findPossibleDuplicateDataSql = "Exec sp_CheckStudentAdmissionInfoDetailIsMatch @Name = @Name, @Age = @Age, @Sex = @Sex";
+
 
             //Check that the file content matches the data table structure
             if (this._cSVFileHelper.CheckIsMatch())
             {
                 if (this._cSVFileHelper.CheckDataIsDuplicated())
                 {
-                    this._cSVFileHelper.SiftedFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
+                    //this._cSVFileHelper.SiftedFileContents(findDuplicateDataSql, findPossibleDuplicateDataSql, this._connStr);
                 }
                 else
                 {
@@ -919,20 +936,21 @@ namespace ReadAndSaveFile
                 this._cSVFileHelper.CheckDataIsDuplicated();
                 this._isCheckPass = false;
             }
-
             this.displayErrorCellAndLog();
+            listView1.BeginUpdate();
 
-            if (this._isCheckPass == true)
+            for (int i = 0; i < this._cSVFileHelper.ErrorLog.Count; i++)
             {
-                this.btnSaveFile.Enabled = true;
+                int column = i + 1;
+
+                listView1.Items.Add(this._cSVFileHelper.ErrorLog[i].ToString());
+
             }
 
 
-        }
-
-        private void lstvLog_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
+            listView1.EndUpdate();
         }
     }
 }
+
+

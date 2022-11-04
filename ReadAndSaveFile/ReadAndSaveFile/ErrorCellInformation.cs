@@ -11,11 +11,13 @@ namespace ReadAndSaveFile
         public enum _errorTypeEnum
         {
             emptyContent = 0,
-            duplicateContent = 1,
+            partduplicate = 1,
             duplicateDbContent = 2,
             filedTypeError = 3,
             characterLengthError = 4,
             contentError = 5,
+            rowDuplicate = 6,
+            possibleDuplicate = 7,
         }
         #endregion
         private int _errorColumn = -1;

@@ -34,25 +34,30 @@
             this.btnSaveFile = new System.Windows.Forms.Button();
             this.btnReload = new System.Windows.Forms.Button();
             this.btnReadFile = new System.Windows.Forms.Button();
-            this.lstvLog = new System.Windows.Forms.ListView();
-            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
+            this.fltLabelColor = new System.Windows.Forms.FlowLayoutPanel();
             this.lblErrorContentColor = new System.Windows.Forms.Label();
-            this.lblDuplicateContentColor = new System.Windows.Forms.Label();
+            this.lblPartDuplicateColor = new System.Windows.Forms.Label();
             this.lblDuplicateDataBaseDataColor = new System.Windows.Forms.Label();
             this.lblEmptyContentColor = new System.Windows.Forms.Label();
             this.lblDataTypeErrorColor = new System.Windows.Forms.Label();
             this.lblCharterLengthErrorColor = new System.Windows.Forms.Label();
-            this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
+            this.lblRowDuplicateColor = new System.Windows.Forms.Label();
+            this.lblPossibleDuplicateColor = new System.Windows.Forms.Label();
+            this.flpnlLabelText = new System.Windows.Forms.FlowLayoutPanel();
             this.lblErrorContent = new System.Windows.Forms.Label();
-            this.lblDuplicateContent = new System.Windows.Forms.Label();
+            this.lblPartDuplicate = new System.Windows.Forms.Label();
             this.lblDuplicateDataBaseData = new System.Windows.Forms.Label();
             this.lblEmptyContent = new System.Windows.Forms.Label();
             this.lblDataTypeError = new System.Windows.Forms.Label();
             this.lblCharacterLengthError = new System.Windows.Forms.Label();
+            this.lblRowDuplicate = new System.Windows.Forms.Label();
+            this.lblPossibleDuplicate = new System.Windows.Forms.Label();
+            this.listView1 = new System.Windows.Forms.ListView();
+            this.Message = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             ((System.ComponentModel.ISupportInitialize)(this.dgvDataTable)).BeginInit();
             this.pnlReadSaveRefreshButton.SuspendLayout();
-            this.flowLayoutPanel1.SuspendLayout();
-            this.flowLayoutPanel2.SuspendLayout();
+            this.fltLabelColor.SuspendLayout();
+            this.flpnlLabelText.SuspendLayout();
             this.SuspendLayout();
             // 
             // dgvDataTable
@@ -124,7 +129,7 @@
             // 
             this.btnReadFile.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnReadFile.AutoEllipsis = true;
-            this.btnReadFile.Location = new System.Drawing.Point(213, 5);
+            this.btnReadFile.Location = new System.Drawing.Point(213, 3);
             this.btnReadFile.Name = "btnReadFile";
             this.btnReadFile.Size = new System.Drawing.Size(75, 22);
             this.btnReadFile.TabIndex = 26;
@@ -132,28 +137,21 @@
             this.btnReadFile.UseVisualStyleBackColor = true;
             this.btnReadFile.Click += new System.EventHandler(this.btnReadFile_Click);
             // 
-            // lstvLog
+            // fltLabelColor
             // 
-            this.lstvLog.HideSelection = false;
-            this.lstvLog.Location = new System.Drawing.Point(574, 0);
-            this.lstvLog.Name = "lstvLog";
-            this.lstvLog.Size = new System.Drawing.Size(214, 267);
-            this.lstvLog.TabIndex = 30;
-            this.lstvLog.UseCompatibleStateImageBehavior = false;
-            this.lstvLog.SelectedIndexChanged += new System.EventHandler(this.lstvLog_SelectedIndexChanged);
-            // 
-            // flowLayoutPanel1
-            // 
-            this.flowLayoutPanel1.Controls.Add(this.lblErrorContentColor);
-            this.flowLayoutPanel1.Controls.Add(this.lblDuplicateContentColor);
-            this.flowLayoutPanel1.Controls.Add(this.lblDuplicateDataBaseDataColor);
-            this.flowLayoutPanel1.Controls.Add(this.lblEmptyContentColor);
-            this.flowLayoutPanel1.Controls.Add(this.lblDataTypeErrorColor);
-            this.flowLayoutPanel1.Controls.Add(this.lblCharterLengthErrorColor);
-            this.flowLayoutPanel1.Location = new System.Drawing.Point(732, 273);
-            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(56, 74);
-            this.flowLayoutPanel1.TabIndex = 31;
+            this.fltLabelColor.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.fltLabelColor.Controls.Add(this.lblErrorContentColor);
+            this.fltLabelColor.Controls.Add(this.lblPartDuplicateColor);
+            this.fltLabelColor.Controls.Add(this.lblDuplicateDataBaseDataColor);
+            this.fltLabelColor.Controls.Add(this.lblEmptyContentColor);
+            this.fltLabelColor.Controls.Add(this.lblDataTypeErrorColor);
+            this.fltLabelColor.Controls.Add(this.lblCharterLengthErrorColor);
+            this.fltLabelColor.Controls.Add(this.lblRowDuplicateColor);
+            this.fltLabelColor.Controls.Add(this.lblPossibleDuplicateColor);
+            this.fltLabelColor.Location = new System.Drawing.Point(732, 251);
+            this.fltLabelColor.Name = "fltLabelColor";
+            this.fltLabelColor.Size = new System.Drawing.Size(56, 96);
+            this.fltLabelColor.TabIndex = 31;
             // 
             // lblErrorContentColor
             // 
@@ -163,13 +161,13 @@
             this.lblErrorContentColor.Size = new System.Drawing.Size(50, 12);
             this.lblErrorContentColor.TabIndex = 40;
             // 
-            // lblDuplicateContentColor
+            // lblPartDuplicateColor
             // 
-            this.lblDuplicateContentColor.BackColor = System.Drawing.Color.Gray;
-            this.lblDuplicateContentColor.Location = new System.Drawing.Point(3, 12);
-            this.lblDuplicateContentColor.Name = "lblDuplicateContentColor";
-            this.lblDuplicateContentColor.Size = new System.Drawing.Size(50, 12);
-            this.lblDuplicateContentColor.TabIndex = 41;
+            this.lblPartDuplicateColor.BackColor = System.Drawing.Color.Gray;
+            this.lblPartDuplicateColor.Location = new System.Drawing.Point(3, 12);
+            this.lblPartDuplicateColor.Name = "lblPartDuplicateColor";
+            this.lblPartDuplicateColor.Size = new System.Drawing.Size(50, 12);
+            this.lblPartDuplicateColor.TabIndex = 41;
             // 
             // lblDuplicateDataBaseDataColor
             // 
@@ -203,18 +201,37 @@
             this.lblCharterLengthErrorColor.Size = new System.Drawing.Size(50, 12);
             this.lblCharterLengthErrorColor.TabIndex = 44;
             // 
-            // flowLayoutPanel2
+            // lblRowDuplicateColor
             // 
-            this.flowLayoutPanel2.Controls.Add(this.lblErrorContent);
-            this.flowLayoutPanel2.Controls.Add(this.lblDuplicateContent);
-            this.flowLayoutPanel2.Controls.Add(this.lblDuplicateDataBaseData);
-            this.flowLayoutPanel2.Controls.Add(this.lblEmptyContent);
-            this.flowLayoutPanel2.Controls.Add(this.lblDataTypeError);
-            this.flowLayoutPanel2.Controls.Add(this.lblCharacterLengthError);
-            this.flowLayoutPanel2.Location = new System.Drawing.Point(574, 273);
-            this.flowLayoutPanel2.Name = "flowLayoutPanel2";
-            this.flowLayoutPanel2.Size = new System.Drawing.Size(160, 74);
-            this.flowLayoutPanel2.TabIndex = 32;
+            this.lblRowDuplicateColor.BackColor = System.Drawing.Color.MediumSlateBlue;
+            this.lblRowDuplicateColor.Location = new System.Drawing.Point(3, 72);
+            this.lblRowDuplicateColor.Name = "lblRowDuplicateColor";
+            this.lblRowDuplicateColor.Size = new System.Drawing.Size(50, 12);
+            this.lblRowDuplicateColor.TabIndex = 45;
+            // 
+            // lblPossibleDuplicateColor
+            // 
+            this.lblPossibleDuplicateColor.BackColor = System.Drawing.Color.Yellow;
+            this.lblPossibleDuplicateColor.Location = new System.Drawing.Point(3, 84);
+            this.lblPossibleDuplicateColor.Name = "lblPossibleDuplicateColor";
+            this.lblPossibleDuplicateColor.Size = new System.Drawing.Size(50, 12);
+            this.lblPossibleDuplicateColor.TabIndex = 46;
+            // 
+            // flpnlLabelText
+            // 
+            this.flpnlLabelText.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.flpnlLabelText.Controls.Add(this.lblErrorContent);
+            this.flpnlLabelText.Controls.Add(this.lblPartDuplicate);
+            this.flpnlLabelText.Controls.Add(this.lblDuplicateDataBaseData);
+            this.flpnlLabelText.Controls.Add(this.lblEmptyContent);
+            this.flpnlLabelText.Controls.Add(this.lblDataTypeError);
+            this.flpnlLabelText.Controls.Add(this.lblCharacterLengthError);
+            this.flpnlLabelText.Controls.Add(this.lblRowDuplicate);
+            this.flpnlLabelText.Controls.Add(this.lblPossibleDuplicate);
+            this.flpnlLabelText.Location = new System.Drawing.Point(574, 251);
+            this.flpnlLabelText.Name = "flpnlLabelText";
+            this.flpnlLabelText.Size = new System.Drawing.Size(160, 96);
+            this.flpnlLabelText.TabIndex = 32;
             // 
             // lblErrorContent
             // 
@@ -225,14 +242,14 @@
             this.lblErrorContent.TabIndex = 0;
             this.lblErrorContent.Text = "Error content";
             // 
-            // lblDuplicateContent
+            // lblPartDuplicate
             // 
-            this.lblDuplicateContent.AutoSize = true;
-            this.lblDuplicateContent.Location = new System.Drawing.Point(3, 12);
-            this.lblDuplicateContent.Name = "lblDuplicateContent";
-            this.lblDuplicateContent.Size = new System.Drawing.Size(107, 12);
-            this.lblDuplicateContent.TabIndex = 1;
-            this.lblDuplicateContent.Text = "Duplicate content";
+            this.lblPartDuplicate.AutoSize = true;
+            this.lblPartDuplicate.Location = new System.Drawing.Point(3, 12);
+            this.lblPartDuplicate.Name = "lblPartDuplicate";
+            this.lblPartDuplicate.Size = new System.Drawing.Size(89, 12);
+            this.lblPartDuplicate.TabIndex = 1;
+            this.lblPartDuplicate.Text = "Part duplicate";
             // 
             // lblDuplicateDataBaseData
             // 
@@ -270,15 +287,54 @@
             this.lblCharacterLengthError.TabIndex = 5;
             this.lblCharacterLengthError.Text = "Content length error";
             // 
+            // lblRowDuplicate
+            // 
+            this.lblRowDuplicate.AutoSize = true;
+            this.lblRowDuplicate.Location = new System.Drawing.Point(3, 72);
+            this.lblRowDuplicate.Name = "lblRowDuplicate";
+            this.lblRowDuplicate.Size = new System.Drawing.Size(83, 12);
+            this.lblRowDuplicate.TabIndex = 6;
+            this.lblRowDuplicate.Text = "Row duplicate";
+            // 
+            // lblPossibleDuplicate
+            // 
+            this.lblPossibleDuplicate.AutoSize = true;
+            this.lblPossibleDuplicate.Location = new System.Drawing.Point(3, 84);
+            this.lblPossibleDuplicate.Name = "lblPossibleDuplicate";
+            this.lblPossibleDuplicate.Size = new System.Drawing.Size(113, 12);
+            this.lblPossibleDuplicate.TabIndex = 7;
+            this.lblPossibleDuplicate.Text = "Possible duplicate";
+            // 
+            // listView1
+            // 
+            this.listView1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.listView1.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.Message});
+            this.listView1.FullRowSelect = true;
+            this.listView1.GridLines = true;
+            this.listView1.HideSelection = false;
+            this.listView1.Location = new System.Drawing.Point(574, 0);
+            this.listView1.Name = "listView1";
+            this.listView1.Size = new System.Drawing.Size(226, 245);
+            this.listView1.TabIndex = 33;
+            this.listView1.UseCompatibleStateImageBehavior = false;
+            this.listView1.View = System.Windows.Forms.View.Details;
+            // 
+            // Message
+            // 
+            this.Message.Text = "Message";
+            this.Message.Width = 201;
+            // 
             // ReadAndSaveFileForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Menu;
             this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Controls.Add(this.flowLayoutPanel2);
-            this.Controls.Add(this.flowLayoutPanel1);
-            this.Controls.Add(this.lstvLog);
+            this.Controls.Add(this.listView1);
+            this.Controls.Add(this.flpnlLabelText);
+            this.Controls.Add(this.fltLabelColor);
             this.Controls.Add(this.pnlReadSaveRefreshButton);
             this.Controls.Add(this.dgvDataTable);
             this.ForeColor = System.Drawing.SystemColors.ControlText;
@@ -288,9 +344,9 @@
             this.Load += new System.EventHandler(this.ReadAndSaveFileForm_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dgvDataTable)).EndInit();
             this.pnlReadSaveRefreshButton.ResumeLayout(false);
-            this.flowLayoutPanel1.ResumeLayout(false);
-            this.flowLayoutPanel2.ResumeLayout(false);
-            this.flowLayoutPanel2.PerformLayout();
+            this.fltLabelColor.ResumeLayout(false);
+            this.flpnlLabelText.ResumeLayout(false);
+            this.flpnlLabelText.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -301,21 +357,26 @@
         private System.Windows.Forms.Button btnSaveFile;
         private System.Windows.Forms.Button btnReload;
         private System.Windows.Forms.Button btnReadFile;
-        private System.Windows.Forms.ListView lstvLog;
         private System.Windows.Forms.Button btnValidate;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
+        private System.Windows.Forms.FlowLayoutPanel fltLabelColor;
         private System.Windows.Forms.Label lblErrorContentColor;
-        private System.Windows.Forms.Label lblDuplicateContentColor;
+        private System.Windows.Forms.Label lblPartDuplicateColor;
         private System.Windows.Forms.Label lblDuplicateDataBaseDataColor;
         private System.Windows.Forms.Label lblEmptyContentColor;
         private System.Windows.Forms.Label lblDataTypeErrorColor;
         private System.Windows.Forms.Label lblCharterLengthErrorColor;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel2;
+        private System.Windows.Forms.FlowLayoutPanel flpnlLabelText;
         private System.Windows.Forms.Label lblErrorContent;
-        private System.Windows.Forms.Label lblDuplicateContent;
+        private System.Windows.Forms.Label lblPartDuplicate;
         private System.Windows.Forms.Label lblDuplicateDataBaseData;
         private System.Windows.Forms.Label lblEmptyContent;
         private System.Windows.Forms.Label lblDataTypeError;
         private System.Windows.Forms.Label lblCharacterLengthError;
+        private System.Windows.Forms.Label lblRowDuplicateColor;
+        private System.Windows.Forms.Label lblRowDuplicate;
+        private System.Windows.Forms.Label lblPossibleDuplicateColor;
+        private System.Windows.Forms.Label lblPossibleDuplicate;
+        private System.Windows.Forms.ListView listView1;
+        private System.Windows.Forms.ColumnHeader Message;
     }
 }
